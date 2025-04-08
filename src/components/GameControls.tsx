@@ -1,0 +1,37 @@
+'use client';
+
+import React from 'react';
+import { useGame } from '@/context/GameContext';
+
+export default function GameControls() {
+  const { gameState, clearSelection, resetGame, loadPuzzle } = useGame();
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap gap-3 justify-center">
+        {gameState.selectedCells.length > 0 && (
+          <button
+            onClick={clearSelection}
+            className="bg-white hover:bg-gray-100 text-gray-800 px-4 py-2 rounded-md font-medium border border-gray-300 shadow-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white dark:border-gray-600"
+          >
+            Clear
+          </button>
+        )}
+        
+        <button
+          onClick={resetGame}
+          className="bg-white hover:bg-gray-100 text-gray-800 px-4 py-2 rounded-md font-medium border border-gray-300 shadow-sm dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white dark:border-gray-600"
+        >
+          Reset
+        </button>
+        
+        <button
+          onClick={() => loadPuzzle()}
+          className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium shadow-sm dark:bg-purple-600 dark:hover:bg-purple-700"
+        >
+          New Puzzle
+        </button>
+      </div>
+    </div>
+  );
+}
