@@ -1,6 +1,7 @@
 # Strands - Word Puzzle Game
 
 A Next.js implementation inspired by the New York Times Strands word game.
+Demo at [strands.tomer.dev](https://strands.tomer.dev)
 
 ## About the Game
 
