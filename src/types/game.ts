@@ -37,6 +37,7 @@ export interface StrandsGame {
 export interface GameState {
   selectedCells: Cell[];
   foundWords: BoardWord[];
+  selectedWords: BoardWord[];  // Add this line to track selected words
   currentWord: string;
   isComplete: boolean;
   showHint: boolean;

@@ -115,3 +115,59 @@ body {
 .transition-theme {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
+
+/* Fireworks animation */
+@keyframes firework {
+  0% {
+    transform: translate(var(--x), var(--initialY));
+    width: var(--initialSize);
+    opacity: 1;
+  }
+  50% {
+    width: 0.5vmin;
+    opacity: 1;
+  }
+  100% {
+    width: var(--finalSize);
+    opacity: 0;
+  }
+}
+
+@keyframes fireworkParticle {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) translate(var(--x), var(--y));
+    opacity: 0;
+  }
+}
+
+.fireworks-container {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.firework {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--initialSize);
+  aspect-ratio: 1;
+  background-color: var(--color);
+  border-radius: 50%;
+  opacity: 0;
+  animation: firework var(--duration) ease-out forwards;
+}
+
+.firework-particle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  animation: fireworkParticle var(--duration) ease-out forwards;
+}

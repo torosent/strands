@@ -8,9 +8,11 @@ import { Cell as CellType } from '@/types/game';
 const Cell = ({ cell }: { cell: CellType }) => {
   const { startSelection, moveSelection, isCellSelectable } = useGame();
   const isSelectable = isCellSelectable(cell);
+  const cellRef = useRef<HTMLDivElement>(null);
 
   return (
     <div 
+      ref={cellRef}
       className={`
         relative flex items-center justify-center w-full h-full aspect-square
         cursor-pointer select-none transition-all
@@ -23,7 +25,29 @@ const Cell = ({ cell }: { cell: CellType }) => {
       }}
       onPointerEnter={(e) => {
         e.preventDefault();
+        // Enhanced diagonal tracking
         if (isSelectable) moveSelection(cell);
+      }}
+      onTouchMove={(e) => {
+        // Improve touch handling for diagonal moves
+        e.preventDefault();
+        const touch = e.touches[0];
+        if (cellRef.current && touch) {
+          const rect = cellRef.current.getBoundingClientRect();
+          const touchX = touch.clientX;
+          const touchY = touch.clientY;
+          
+          // Check if touch is over this cell
+          if (
+            touchX >= rect.left &&
+            touchX <= rect.right &&
+            touchY >= rect.top &&
+            touchY <= rect.bottom &&
+            isSelectable
+          ) {
+            moveSelection(cell);
+          }
+        }
       }}
     >
       <div 
@@ -75,6 +99,20 @@ const SelectionPath = ({ selectedCells }: { selectedCells: CellType[] }) => {
       className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none" 
       style={{ position: 'absolute' }}
     >
+      {/* Thicker background path for better visibility */}
+      {paths.map((path, index) => (
+        <path
+          key={`bg-${index}`}
+          d={path}
+          stroke="rgba(234, 179, 8, 0.3)"
+          strokeWidth="16"
+          fill="none"
+          strokeLinecap="round"
+          className="dark:stroke-yellow-600/30"
+        />
+      ))}
+      
+      {/* Main selection path */}
       {paths.map((path, index) => (
         <path
           key={index}
@@ -86,6 +124,29 @@ const SelectionPath = ({ selectedCells }: { selectedCells: CellType[] }) => {
           className="dark:stroke-yellow-600"
         />
       ))}
+      
+      {/* Direction indicators on path to help with diagonal selection */}
+      {selectedCells.length > 1 && selectedCells.slice(1).map((cell, index) => {
+        const prevCell = selectedCells[index];
+        const cellWidth = boardRef.current ? boardRef.current.offsetWidth / 8 : 0;
+        const cellHeight = boardRef.current ? boardRef.current.offsetHeight / 6 : 0;
+        
+        const x = ((prevCell.col + cell.col) / 2 + 0.5) * cellWidth;
+        const y = ((prevCell.row + cell.row) / 2 + 0.5) * cellHeight;
+        
+        return (
+          <circle
+            key={`indicator-${index}`}
+            cx={x}
+            cy={y}
+            r={5}
+            fill="white"
+            stroke="rgba(234, 179, 8, 1)"
+            strokeWidth={2}
+            className="opacity-80"
+          />
+        );
+      })}
     </svg>
   );
 };

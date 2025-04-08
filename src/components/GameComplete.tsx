@@ -1,10 +1,89 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useGame } from '@/context/GameContext';
+
+// Fireworks component for celebration effect
+const Fireworks = () => {
+  const [fireworks, setFireworks] = useState<React.ReactNode[]>([]);
+  
+  const createFirework = useCallback(() => {
+    const colors = ['#FF5252', '#FFD740', '#64FFDA', '#448AFF', '#E040FB', '#69F0AE'];
+    
+    const firework = {
+      id: Date.now(),
+      x: Math.random() * 100 - 50, // Random position
+      y: -(Math.random() * 50 + 50), // Start below viewport
+      size: Math.random() * 2 + 1,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    };
+    
+    return (
+      <div 
+        key={firework.id}
+        className="firework"
+        style={{
+          '--x': `${firework.x}vw`,
+          '--initialY': `${firework.y}vh`,
+          '--initialSize': `${firework.size}vmin`,
+          '--finalSize': `${firework.size * 5}vmin`,
+          '--duration': `${Math.random() * 1 + 0.5}s`,
+          '--color': firework.color,
+          opacity: 1
+        } as React.CSSProperties}
+        onAnimationEnd={() => {
+          setFireworks(prev => prev.filter(fw => 
+            React.isValidElement(fw) && fw.key !== firework.id.toString()
+          ));
+        }}
+      >
+        {[...Array(8)].map((_, i) => (
+          <div 
+            key={i} 
+            className="firework-particle"
+            style={{
+              '--x': `${Math.cos(Math.PI * 2 / 8 * i) * 50}px`,
+              '--y': `${Math.sin(Math.PI * 2 / 8 * i) * 50}px`,
+              '--duration': `${Math.random() * 1 + 0.5}s`,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
+    );
+  }, []);
+  
+  useEffect(() => {
+    // Launch fireworks at staggered intervals
+    const interval = setInterval(() => {
+      setFireworks(prev => [...prev, createFirework()]);
+    }, 300);
+    
+    // Stop after a few seconds
+    const timeout = setTimeout(() => {
+      clearInterval(interval);
+    }, 3000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [createFirework]);
+  
+  return <div className="fireworks-container">{fireworks}</div>;
+};
 
 export default function GameComplete() {
   const { puzzle, gameState, loadPuzzle } = useGame();
+  const [showFireworks, setShowFireworks] = useState(false);
+  
+  useEffect(() => {
+    // Start fireworks animation with a slight delay
+    const timer = setTimeout(() => {
+      setShowFireworks(true);
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   // Calculate time taken
   const startTime = gameState.startTime || new Date();
@@ -17,6 +96,7 @@ export default function GameComplete() {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 p-4">
+      {showFireworks && <Fireworks />}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-lg animate-fade-in border border-gray-200 dark:border-gray-700">
         <h2 className="text-2xl font-bold text-center mb-4 text-gray-900 dark:text-white">
           Puzzle Complete!

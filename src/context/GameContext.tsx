@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { GameState, StrandsGame, Cell, BoardWord } from '@/types/game';
+import { GameState, StrandsGame, Cell, BoardWord, Word } from '@/types/game';
 import { getPuzzle, getRandomPuzzle } from '@/data/puzzles';
 
 type GameContextType = {
@@ -17,11 +17,15 @@ type GameContextType = {
   loadPuzzle: (puzzleId?: number) => void;
   isCellSelectable: (cell: Cell) => boolean;
   isAdjacent: (cell1: Cell, cell2: Cell) => boolean;
+  removeWord: (word: BoardWord) => void;
+  shuffledWords: Word[];  // Add shuffledWords property
+  selectWord: (word: Word) => void;  // Add selectWord function
 };
 
 const initialGameState: GameState = {
   selectedCells: [],
   foundWords: [],
+  selectedWords: [], // Add this line to initialize selectedWords
   currentWord: '',
   isComplete: false,
   showHint: false,
@@ -35,17 +39,61 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [puzzle, setPuzzle] = useState<StrandsGame>(getPuzzle());
   const [gameState, setGameState] = useState<GameState>(initialGameState);
   const [isDragging, setIsDragging] = useState(false);
+  const [shuffledWords, setShuffledWords] = useState<Word[]>([]);
 
   // Initialize the game
   useEffect(() => {
     loadPuzzle();
   }, []);
 
-  // Check if a cell is adjacent to the last selected cell
+  // Create shuffled words whenever puzzle changes
+  useEffect(() => {
+    if (puzzle && puzzle.board && puzzle.board.words) {
+      // Create simplified Word objects from BoardWords
+      const words = puzzle.board.words.map(boardWord => ({
+        id: boardWord.id,
+        word: boardWord.word
+      }));
+      
+      // Shuffle the array
+      const shuffled = [...words].sort(() => Math.random() - 0.5);
+      setShuffledWords(shuffled);
+    }
+  }, [puzzle]);
+
+  // Check if a cell is adjacent to the last selected cell with better diagonal support
   const isAdjacent = (cell1: Cell, cell2: Cell): boolean => {
     const rowDiff = Math.abs(cell1.row - cell2.row);
     const colDiff = Math.abs(cell1.col - cell2.col);
-    return (rowDiff <= 1 && colDiff <= 1) && !(rowDiff === 0 && colDiff === 0);
+    
+    // Basic adjacency check (same as before)
+    const isBasicAdjacent = (rowDiff <= 1 && colDiff <= 1) && !(rowDiff === 0 && colDiff === 0);
+    
+    // If cells are already adjacent in the basic sense, return true
+    if (isBasicAdjacent) return true;
+    
+    // Enhanced diagonal detection - check if the cells form a straight line with one cell in between
+    // This helps when moving the finger quickly in diagonal directions
+    if (gameState.selectedCells.length >= 2) {
+      const previousCell = gameState.selectedCells[gameState.selectedCells.length - 2];
+      
+      // Check if we're continuing in the same direction (diagonal pattern)
+      const prevRowDiff = cell2.row - previousCell.row;
+      const prevColDiff = cell2.col - previousCell.col;
+      const curRowDiff = cell1.row - cell2.row;
+      const curColDiff = cell1.col - cell2.col;
+      
+      // If we're moving in the same diagonal direction, allow selection even if cells aren't immediately adjacent
+      if (
+        Math.sign(prevRowDiff) === Math.sign(curRowDiff) &&
+        Math.sign(prevColDiff) === Math.sign(curColDiff) &&
+        rowDiff <= 2 && colDiff <= 2 // Still limit the jump distance
+      ) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   // Check if a cell can be selected
@@ -286,6 +334,45 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  // Remove a word from the list of selected words
+  const removeWord = (word: BoardWord) => {
+    // Find the word in the selected words
+    const wordIndex = gameState.selectedWords.findIndex(w => w.id === word.id);
+    
+    // If the word exists, remove it
+    if (wordIndex !== -1) {
+      const updatedSelectedWords = [...gameState.selectedWords];
+      updatedSelectedWords.splice(wordIndex, 1);
+      
+      setGameState(prev => ({
+        ...prev,
+        selectedWords: updatedSelectedWords
+      }));
+    }
+  };
+
+  // Select a word from the grid
+  const selectWord = (word: Word) => {
+    // Check if the word is already selected
+    const isAlreadySelected = gameState.selectedWords.some(w => w.id === word.id);
+    
+    // If already selected, do nothing
+    if (isAlreadySelected) {
+      return;
+    }
+
+    // Find the corresponding BoardWord in the puzzle
+    const boardWord = puzzle.board.words.find(w => w.id === word.id);
+    
+    if (boardWord) {
+      // Add the word to selectedWords
+      setGameState(prev => ({
+        ...prev,
+        selectedWords: [...prev.selectedWords, boardWord]
+      }));
+    }
+  };
+
   return (
     <GameContext.Provider value={{
       puzzle,
@@ -299,7 +386,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       showHint,
       loadPuzzle,
       isCellSelectable,
-      isAdjacent
+      isAdjacent,
+      removeWord,
+      shuffledWords,
+      selectWord
     }}>
       {children}
     </GameContext.Provider>
