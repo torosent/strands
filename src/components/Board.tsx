@@ -196,14 +196,14 @@ export default function Board() {
 
   return (
     <div 
-      className="relative w-full max-w-md mx-auto aspect-[4/3] touch-none bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
-      ref={boardRef}
+    className="relative w-full max-w-md mx-auto aspect-[4/3] touch-none bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
+    ref={boardRef}
     >
       {/* Selection path overlay */}
       <SelectionPath selectedCells={gameState.selectedCells} />
 
       {/* Board grid */}
-      <div className="grid grid-rows-6 grid-cols-8 w-full h-full gap-1.5">
+      <div className="grid grid-rows-6 grid-cols-8 w-full gap-1.5 min-h-0"> 
         {puzzle.board.cells.map((row, rowIndex) => (
           row.map((cell, colIndex) => (
             <Cell 
