@@ -46,6 +46,7 @@ export interface GameState {
   endTime?: Date;
   lastTapTime?: number;
   lastTappedCell?: Cell;
+  answersRevealed?: boolean;  // Track if answers have been revealed
 }
 
 export type ThemeMode = 'light' | 'dark';

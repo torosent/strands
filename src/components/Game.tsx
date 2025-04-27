@@ -22,7 +22,8 @@ export default function Game() {
         <GameControls />
       </div>
 
-      {gameState.isComplete && (
+      {/* only show completion popup when game is truly completed, not when answers are revealed */}
+      {(gameState.isComplete && !gameState.answersRevealed) && (
         <GameComplete />
       )}
     </div>

@@ -20,17 +20,19 @@ type GameContextType = {
   removeWord: (word: BoardWord) => void;
   shuffledWords: Word[];  // Add shuffledWords property
   selectWord: (word: Word) => void;  // Add selectWord function
+  revealAnswers: () => void;  // Add revealAnswers function
 };
 
 const initialGameState: GameState = {
   selectedCells: [],
   foundWords: [],
-  selectedWords: [], // Add this line to initialize selectedWords
+  selectedWords: [],
   currentWord: '',
   isComplete: false,
   showHint: false,
   usedHint: false,
   startTime: new Date(),
+  answersRevealed: false,  // initialize answersRevealed
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -373,6 +375,38 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Reveal all answers by marking every word and its cells as found
+  const revealAnswers = () => {
+    // Mark all words as found
+    const updatedWords = puzzle.board.words.map(word => ({ ...word, isFound: true }));
+    // Mark corresponding cells as found
+    const updatedCells = puzzle.board.cells.map(row => 
+      row.map(cell => {
+        const isPartOfAnyWord = puzzle.board.words.some(w => 
+          w.cells.some(c => c.row === cell.row && c.col === cell.col)
+        );
+        return isPartOfAnyWord 
+          ? { ...cell, isFound: true, isSelected: false } 
+          : cell;
+      })
+    );
+
+    setPuzzle(prev => ({
+      ...prev,
+      board: {
+        ...prev.board,
+        words: updatedWords,
+        cells: updatedCells
+      }
+    }));
+
+    setGameState(prev => ({
+      ...prev,
+      foundWords: updatedWords,
+      answersRevealed: true  // mark answers revealed without completing
+    }));
+  };
+
   return (
     <GameContext.Provider value={{
       puzzle,
@@ -389,7 +423,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       isAdjacent,
       removeWord,
       shuffledWords,
-      selectWord
+      selectWord,
+      revealAnswers
     }}>
       {children}
     </GameContext.Provider>
