@@ -65,21 +65,24 @@ const Cell = ({ cell }: { cell: CellType }) => {
       `}
       onPointerDown={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (!cell.isFound) startSelection(cell);
       }}
       onPointerEnter={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (isSelectable) moveSelection(cell);
       }}
       onTouchStart={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (!cell.isFound) startSelection(cell);
       }}
     >
       <div 
         className={`
           flex items-center justify-center w-full h-full rounded-full
-          font-bold text-lg sm:text-xl transition-all shadow-sm
+          font-bold text-lg sm:text-xl transition-all shadow-sm pointer-events-none
           ${cell.isSelected ? 'bg-yellow-400 text-gray-900 dark:bg-yellow-500' : ''}
           ${cell.isFound ? getCellColor() : 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-transparent'}
           ${isHinted && !cell.isFound ? 'border-4 border-yellow-500 dark:border-yellow-400' : ''}
@@ -191,6 +194,7 @@ export default function Board() {
   // Handle touch move at the board level for better mobile support
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const touch = e.touches[0];
     if (!touch || !boardRef.current) return;
 
@@ -205,7 +209,7 @@ export default function Board() {
       const col = parseInt(cellElement.dataset.col || '0', 10);
       const cell = puzzle.board.cells[row]?.[col];
       
-      if (cell) {
+      if (cell && !cell.isFound) {
         moveSelection(cell);
       }
     }
@@ -254,7 +258,8 @@ export default function Board() {
 
   return (
     <div 
-    className="relative w-full max-w-md mx-auto aspect-[4/3] touch-none bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
+    className="relative w-full max-w-md mx-auto aspect-[4/3] bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
+    style={{ touchAction: 'none' }}
     ref={boardRef}
     onTouchMove={handleTouchMove}
     >

@@ -144,7 +144,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Continue selection during drag
   const moveSelection = (cell: Cell) => {
-    if (!isDragging || cell.isFound) return;
+    // Allow selection to continue if we already have selected cells (actively selecting)
+    if (gameState.selectedCells.length === 0 || cell.isFound) return;
     if (!isCellSelectable(cell)) return;
     
     const updatedCells = [...puzzle.board.cells];
