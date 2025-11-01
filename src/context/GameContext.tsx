@@ -377,8 +377,12 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Reveal all answers by marking every word and its cells as found
   const revealAnswers = () => {
-    // Mark all words as found
-    const updatedWords = puzzle.board.words.map(word => ({ ...word, isFound: true }));
+    // Mark all words as found and assign a unique colorIndex to each
+    const updatedWords = puzzle.board.words.map((word, index) => ({ 
+      ...word, 
+      isFound: true,
+      colorIndex: index  // Assign unique color index for each word
+    }));
     // Mark corresponding cells as found
     const updatedCells = puzzle.board.cells.map(row => 
       row.map(cell => {

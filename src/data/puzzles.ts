@@ -50,12 +50,12 @@ function canPlaceWord(
     return false;
   }
   
-  // Check if cells are empty or have a matching letter
+  // Check if all cells are empty (no overlapping allowed)
   for (let i = 0; i < word.length; i++) {
     const row = startRow + direction.row * i;
     const col = startCol + direction.col * i;
     
-    if (board[row][col].letter !== '' && board[row][col].letter !== word[i]) {
+    if (board[row][col].letter !== '') {
       return false;
     }
   }

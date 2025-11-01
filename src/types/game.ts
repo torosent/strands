@@ -9,7 +9,7 @@ export interface Cell {
   letter: string;
   isSelected: boolean;
   isFound: boolean;
-  belongsToWords: number[];  // IDs of words this cell belongs to
+  belongsToWords: number[];  // IDs of words this cell belongs to (now only 0 or 1 word since overlapping is not allowed)
 }
 
 export interface BoardWord {
@@ -17,6 +17,7 @@ export interface BoardWord {
   word: string;
   isFound: boolean;
   cells: Cell[];
+  colorIndex?: number;  // Index for color assignment when revealed
 }
 
 export interface StrandsBoard {

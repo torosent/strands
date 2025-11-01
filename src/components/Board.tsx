@@ -4,11 +4,40 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useGame } from '@/context/GameContext';
 import { Cell as CellType } from '@/types/game';
 
+// Define color palette for revealed words
+const WORD_COLORS = [
+  'bg-red-500',      // 0
+  'bg-blue-600',     // 1
+  'bg-green-600',    // 2
+  'bg-yellow-500',   // 3
+  'bg-purple-500',   // 4
+  'bg-pink-500',     // 5
+  'bg-indigo-600',   // 6
+  'bg-teal-500',     // 7
+];
+
 // Cell component for individual letters
 const Cell = ({ cell }: { cell: CellType }) => {
-  const { startSelection, moveSelection, isCellSelectable } = useGame();
+  const { startSelection, moveSelection, isCellSelectable, puzzle } = useGame();
   const isSelectable = isCellSelectable(cell);
   const cellRef = useRef<HTMLDivElement>(null);
+  
+  // Get the color for this cell based on which word it belongs to
+  const getCellColor = () => {
+    if (!cell.isFound) return 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-transparent';
+    
+    // Find which word this cell belongs to
+    const wordForCell = puzzle.board.words.find(word => 
+      word.isFound && word.cells.some(c => c.row === cell.row && c.col === cell.col)
+    );
+    
+    if (wordForCell && wordForCell.colorIndex !== undefined) {
+      return WORD_COLORS[wordForCell.colorIndex % WORD_COLORS.length];
+    }
+    
+    // Default blue color if no colorIndex is set
+    return 'bg-blue-600 dark:bg-blue-600';
+  };
 
   return (
     <div 
@@ -55,7 +84,7 @@ const Cell = ({ cell }: { cell: CellType }) => {
           flex items-center justify-center w-full h-full rounded-full
           font-bold text-lg sm:text-xl transition-all shadow-sm
           ${cell.isSelected ? 'bg-yellow-400 text-gray-900 dark:bg-yellow-500' : ''}
-          ${cell.isFound ? 'bg-blue-600 dark:bg-blue-600' : 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-transparent'}
+          ${cell.isFound ? getCellColor() : 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-transparent'}
         `}
       >
         {cell.letter}
