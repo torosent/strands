@@ -1,13 +1,13 @@
 import { StrandsGame, BoardWord, Cell, StrandsBoard } from '../types/game';
 
-// Directions for word placement
+// Directions for word placement (excluding right-to-left)
 const DIRECTIONS = [
   { row: 0, col: 1 },  // right
   { row: 1, col: 0 },  // down
   { row: 1, col: 1 },  // diagonal right down
   { row: 1, col: -1 }, // diagonal left down
   { row: -1, col: 0 }, // up
-  { row: 0, col: -1 }, // left
+  // { row: 0, col: -1 }, // left (removed - no right-to-left)
   { row: -1, col: 1 }, // diagonal right up
   { row: -1, col: -1 } // diagonal left up
 ];
