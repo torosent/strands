@@ -44,9 +44,19 @@ const Cell = ({ cell }: { cell: CellType }) => {
     return 'bg-blue-600 dark:bg-blue-600';
   };
 
+  // Register this cell's ref with parent
+  useEffect(() => {
+    if (cellRef.current) {
+      cellRef.current.dataset.row = cell.row.toString();
+      cellRef.current.dataset.col = cell.col.toString();
+    }
+  }, [cell.row, cell.col]);
+
   return (
     <div 
       ref={cellRef}
+      data-row={cell.row}
+      data-col={cell.col}
       className={`
         relative flex items-center justify-center w-full h-full aspect-square
         cursor-pointer select-none transition-all
@@ -59,29 +69,11 @@ const Cell = ({ cell }: { cell: CellType }) => {
       }}
       onPointerEnter={(e) => {
         e.preventDefault();
-        // Enhanced diagonal tracking
         if (isSelectable) moveSelection(cell);
       }}
-      onTouchMove={(e) => {
-        // Improve touch handling for diagonal moves
+      onTouchStart={(e) => {
         e.preventDefault();
-        const touch = e.touches[0];
-        if (cellRef.current && touch) {
-          const rect = cellRef.current.getBoundingClientRect();
-          const touchX = touch.clientX;
-          const touchY = touch.clientY;
-          
-          // Check if touch is over this cell
-          if (
-            touchX >= rect.left &&
-            touchX <= rect.right &&
-            touchY >= rect.top &&
-            touchY <= rect.bottom &&
-            isSelectable
-          ) {
-            moveSelection(cell);
-          }
-        }
+        if (!cell.isFound) startSelection(cell);
       }}
     >
       <div 
@@ -187,7 +179,7 @@ const SelectionPath = ({ selectedCells }: { selectedCells: CellType[] }) => {
 };
 
 export default function Board() {
-  const { puzzle, gameState, endSelection } = useGame();
+  const { puzzle, gameState, endSelection, moveSelection } = useGame();
   const boardRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -195,6 +187,29 @@ export default function Board() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Handle touch move at the board level for better mobile support
+  const handleTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (!touch || !boardRef.current) return;
+
+    // Find which cell the touch is over
+    const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
+    const cellElement = elements.find(el => 
+      el.hasAttribute('data-row') && el.hasAttribute('data-col')
+    ) as HTMLElement;
+
+    if (cellElement) {
+      const row = parseInt(cellElement.dataset.row || '0', 10);
+      const col = parseInt(cellElement.dataset.col || '0', 10);
+      const cell = puzzle.board.cells[row]?.[col];
+      
+      if (cell) {
+        moveSelection(cell);
+      }
+    }
+  };
 
   // Handle pointer up to end selection
   useEffect(() => {
@@ -204,9 +219,17 @@ export default function Board() {
       }
     };
 
+    const handleTouchEnd = () => {
+      if (gameState.selectedCells.length > 0) {
+        endSelection();
+      }
+    };
+
     document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('touchend', handleTouchEnd);
     return () => {
       document.removeEventListener('pointerup', handlePointerUp);
+      document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [gameState.selectedCells, endSelection]);
 
@@ -233,6 +256,7 @@ export default function Board() {
     <div 
     className="relative w-full max-w-md mx-auto aspect-[4/3] touch-none bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
     ref={boardRef}
+    onTouchMove={handleTouchMove}
     >
       {/* Selection path overlay */}
       <SelectionPath selectedCells={gameState.selectedCells} />
