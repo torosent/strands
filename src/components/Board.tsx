@@ -18,9 +18,14 @@ const WORD_COLORS = [
 
 // Cell component for individual letters
 const Cell = ({ cell }: { cell: CellType }) => {
-  const { startSelection, moveSelection, isCellSelectable, puzzle } = useGame();
+  const { startSelection, moveSelection, isCellSelectable, puzzle, gameState } = useGame();
   const isSelectable = isCellSelectable(cell);
   const cellRef = useRef<HTMLDivElement>(null);
+  
+  // Check if this cell is hinted
+  const isHinted = gameState.hintedCells.some(
+    hc => hc.row === cell.row && hc.col === cell.col
+  );
   
   // Get the color for this cell based on which word it belongs to
   const getCellColor = () => {
@@ -85,6 +90,7 @@ const Cell = ({ cell }: { cell: CellType }) => {
           font-bold text-lg sm:text-xl transition-all shadow-sm
           ${cell.isSelected ? 'bg-yellow-400 text-gray-900 dark:bg-yellow-500' : ''}
           ${cell.isFound ? getCellColor() : 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-transparent'}
+          ${isHinted && !cell.isFound ? 'border-4 border-yellow-500 dark:border-yellow-400' : ''}
         `}
       >
         {cell.letter}

@@ -48,6 +48,7 @@ export interface GameState {
   lastTapTime?: number;
   lastTappedCell?: Cell;
   answersRevealed?: boolean;  // Track if answers have been revealed
+  hintedCells: { row: number; col: number }[];  // Track cells revealed by hints
 }
 
 export type ThemeMode = 'light' | 'dark';

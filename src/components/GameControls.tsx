@@ -4,7 +4,7 @@ import React from 'react';
 import { useGame } from '@/context/GameContext';
 
 export default function GameControls() {
-  const { gameState, clearSelection, resetGame, loadPuzzle, revealAnswers } = useGame();
+  const { gameState, clearSelection, resetGame, loadPuzzle, revealAnswers, useHint } = useGame();
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,6 +31,16 @@ export default function GameControls() {
         >
           New Puzzle
         </button>
+        
+        {!gameState.isComplete && !gameState.answersRevealed && (
+          <button
+            onClick={useHint}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md font-medium shadow-sm dark:bg-yellow-600 dark:hover:bg-yellow-700"
+          >
+            Hint
+          </button>
+        )}
+        
         {!gameState.isComplete && (
           <button
             onClick={revealAnswers}

@@ -14,6 +14,7 @@ type GameContextType = {
   clearSelection: () => void;
   resetGame: () => void;
   showHint: () => void;
+  useHint: () => void;  // Add useHint function
   loadPuzzle: (puzzleId?: number) => void;
   isCellSelectable: (cell: Cell) => boolean;
   isAdjacent: (cell1: Cell, cell2: Cell) => boolean;
@@ -33,6 +34,7 @@ const initialGameState: GameState = {
   usedHint: false,
   startTime: new Date(),
   answersRevealed: false,  // initialize answersRevealed
+  hintedCells: [],  // initialize hintedCells
 };
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -307,7 +309,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     // Reset game state
     setGameState({
       ...initialGameState,
-      startTime: new Date()
+      startTime: new Date(),
+      hintedCells: []
     });
   };
 
@@ -332,7 +335,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     
     setGameState({
       ...initialGameState,
-      startTime: new Date()
+      startTime: new Date(),
+      hintedCells: []
     });
   };
 
@@ -411,6 +415,40 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     }));
   };
 
+  // Use a hint - reveals the first two letters of an unrevealed word
+  const useHint = () => {
+    // Find the first word that hasn't been found yet
+    const unrevealedWord = puzzle.board.words.find(word => !word.isFound);
+    
+    if (!unrevealedWord) {
+      // No more words to reveal
+      return;
+    }
+
+    // Get the first two cells of the unrevealed word
+    const firstTwoCells = unrevealedWord.cells.slice(0, 2);
+    
+    // Add these cells to hintedCells if they're not already there
+    setGameState(prev => {
+      const newHintedCells = [...prev.hintedCells];
+      
+      firstTwoCells.forEach(cell => {
+        const alreadyHinted = newHintedCells.some(
+          hc => hc.row === cell.row && hc.col === cell.col
+        );
+        if (!alreadyHinted) {
+          newHintedCells.push({ row: cell.row, col: cell.col });
+        }
+      });
+
+      return {
+        ...prev,
+        hintedCells: newHintedCells,
+        usedHint: true
+      };
+    });
+  };
+
   return (
     <GameContext.Provider value={{
       puzzle,
@@ -422,6 +460,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       clearSelection,
       resetGame,
       showHint,
+      useHint,
       loadPuzzle,
       isCellSelectable,
       isAdjacent,
