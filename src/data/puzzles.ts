@@ -1,710 +1,1054 @@
-import { StrandsGame, BoardWord, Cell, StrandsBoard } from '../types/game';
+import type { StrandsGame } from '../types/game';
+import { generateBoard } from './board.ts';
 
-// Directions for word placement (excluding right-to-left)
-const DIRECTIONS = [
-  { row: 0, col: 1 },  // right
-  { row: 1, col: 0 },  // down
-  { row: 1, col: 1 },  // diagonal right down
-  { row: 1, col: -1 }, // diagonal left down
-  { row: -1, col: 0 }, // up
-  // { row: 0, col: -1 }, // left (removed - no right-to-left)
-  { row: -1, col: 1 }, // diagonal right up
-  { row: -1, col: -1 } // diagonal left up
-];
-
-// Create an empty 6x8 board
-function createEmptyBoard(): Cell[][] {
-  const board: Cell[][] = [];
-  for (let row = 0; row < 6; row++) {
-    board[row] = [];
-    for (let col = 0; col < 8; col++) {
-      board[row][col] = {
-        row,
-        col,
-        letter: '',
-        isSelected: false,
-        isFound: false,
-        belongsToWords: []
-      };
-    }
-  }
-  return board;
-}
-
-// Check if a word can be placed on the board at a specific position
-function canPlaceWord(
-  board: Cell[][],
-  word: string,
-  startRow: number,
-  startCol: number,
-  direction: { row: number; col: number }
-): boolean {
-  const height = board.length;
-  const width = board[0].length;
-  
-  // Check if word fits on the board
-  const endRow = startRow + direction.row * (word.length - 1);
-  const endCol = startCol + direction.col * (word.length - 1);
-  
-  if (endRow < 0 || endRow >= height || endCol < 0 || endCol >= width) {
-    return false;
-  }
-  
-  // Check if all cells are empty (no overlapping allowed)
-  for (let i = 0; i < word.length; i++) {
-    const row = startRow + direction.row * i;
-    const col = startCol + direction.col * i;
-    
-    if (board[row][col].letter !== '') {
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-// Place a word on the board
-function placeWord(
-  board: Cell[][],
-  word: string,
-  wordId: number,
-  startRow: number,
-  startCol: number,
-  direction: { row: number; col: number }
-): Cell[] {
-  const cells: Cell[] = [];
-  
-  for (let i = 0; i < word.length; i++) {
-    const row = startRow + direction.row * i;
-    const col = startCol + direction.col * i;
-    
-    board[row][col].letter = word[i];
-    board[row][col].belongsToWords.push(wordId);
-    
-    cells.push(board[row][col]);
-  }
-  
-  return cells;
-}
-
-// Generate a board with words placed
-function generateBoard(themeWords: string[]): StrandsBoard {
-  const board = createEmptyBoard();
-  const words: BoardWord[] = [];
-  const usedWords: string[] = [];
-  const shuffledWords = [...themeWords].sort(() => Math.random() - 0.5);
-  
-  let id = 1;
-  
-  // Loop until we've placed all words or we can't place any more
-  for (const word of shuffledWords) {
-    let placed = false;
-    const maxAttempts = 100;
-    let attempts = 0;
-    
-    // Try to place the word
-    while (!placed && attempts < maxAttempts) {
-      const direction = DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
-      const startRow = Math.floor(Math.random() * 6);
-      const startCol = Math.floor(Math.random() * 8);
-      
-      if (canPlaceWord(board, word, startRow, startCol, direction)) {
-        const cells = placeWord(board, word, id, startRow, startCol, direction);
-        words.push({
-          id,
-          word,
-          isFound: false,
-          cells
-        });
-        usedWords.push(word);
-        placed = true;
-        id++;
-      }
-      
-      attempts++;
-    }
-  }
-  
-  // Fill in any remaining empty cells with random letters
-  for (let row = 0; row < 6; row++) {
-    for (let col = 0; col < 8; col++) {
-      if (board[row][col].letter === '') {
-        board[row][col].letter = String.fromCharCode(
-          65 + Math.floor(Math.random() * 26)
-        );
-      }
-    }
-  }
-  
-  return {
-    cells: board,
-    words,
-    width: 8,
-    height: 6
-  };
-}
-
-export const puzzleThemes: { theme: string; words: string[]; bonusWord: string }[] = [
+// NYT Strands rules for every puzzle: the spangram describes the theme, every word
+// has 4+ letters A-Z, and spangram + theme words have exactly 48 letters (6x8 board).
+export const puzzleThemes: { theme: string; spangram: string; words: string[] }[] = [
   {
     theme: 'Musical Instruments',
-    words: ['PIANO', 'GUITAR', 'VIOLIN', 'DRUMS', 'FLUTE', 'TRUMPET', 'SAXOPHONE'],
-    bonusWord: 'ORCHESTRA'
+    spangram: 'ORCHESTRA',
+    words: ['PIANO', 'GUITAR', 'VIOLIN', 'DRUMS', 'FLUTE', 'TRUMPET', 'CELLO']
   },
   {
     theme: 'Types of Trees',
-    words: ['OAK', 'MAPLE', 'PINE', 'BIRCH', 'CEDAR', 'WILLOW', 'REDWOOD'],
-    bonusWord: 'FOREST'
+    spangram: 'FOREST',
+    words: ['MAPLE', 'PINE', 'BIRCH', 'CEDAR', 'WILLOW', 'REDWOOD', 'SPRUCE', 'PALM']
   },
   {
     theme: 'Celestial Bodies',
-    words: ['SUN', 'MOON', 'PLANET', 'STAR', 'COMET', 'GALAXY', 'ASTEROID'],
-    bonusWord: 'UNIVERSE'
+    spangram: 'UNIVERSE',
+    words: ['MOON', 'PLANET', 'STAR', 'GALAXY', 'ASTEROID', 'METEOR', 'NEBULA']
   },
   {
     theme: 'Sports',
-    words: ['SOCCER', 'BASEBALL', 'TENNIS', 'BASKETBALL', 'GOLF', 'HOCKEY', 'VOLLEYBALL'],
-    bonusWord: 'ATHLETICS'
+    spangram: 'ATHLETICS',
+    words: ['SOCCER', 'TENNIS', 'RUGBY', 'GOLF', 'HOCKEY', 'BOXING', 'SKIING']
   },
   {
     theme: 'Weather Phenomena',
-    words: ['RAIN', 'SNOW', 'THUNDER', 'LIGHTNING', 'TORNADO', 'HURRICANE', 'BLIZZARD'],
-    bonusWord: 'FORECAST'
+    spangram: 'FORECAST',
+    words: ['RAIN', 'SNOW', 'THUNDER', 'HAIL', 'TORNADO', 'SLEET', 'LIGHTNING']
   },
   {
     theme: 'Fruits',
-    words: ['APPLE', 'BANANA', 'ORANGE', 'GRAPE', 'MANGO', 'PINEAPPLE', 'STRAWBERRY'],
-    bonusWord: 'VITAMIN'
+    spangram: 'FRUITBOWL',
+    words: ['APPLE', 'BANANA', 'ORANGE', 'GRAPE', 'MANGO', 'PEAR', 'KIWI', 'PLUM']
   },
   {
     theme: 'Kitchen Appliances',
-    words: ['OVEN', 'MICROWAVE', 'TOASTER', 'BLENDER', 'MIXER', 'FRIDGE', 'STOVE'],
-    bonusWord: 'KITCHEN'
+    spangram: 'KITCHEN',
+    words: ['OVEN', 'KETTLE', 'TOASTER', 'BLENDER', 'MIXER', 'STOVE', 'FREEZER']
   },
   {
     theme: 'Types of Flowers',
-    words: ['ROSE', 'TULIP', 'DAISY', 'LILY', 'ORCHID', 'POPPY', 'VIOLET'],
-    bonusWord: 'BOUQUET'
+    spangram: 'BOUQUET',
+    words: ['ROSE', 'TULIP', 'DAISY', 'LILY', 'ORCHID', 'POPPY', 'VIOLET', 'DAHLIA']
   },
   {
     theme: 'Countries',
-    words: ['CANADA', 'BRAZIL', 'FRANCE', 'JAPAN', 'EGYPT', 'MEXICO', 'INDIA'],
-    bonusWord: 'GLOBAL'
+    spangram: 'NATIONS',
+    words: ['CANADA', 'BRAZIL', 'JAPAN', 'EGYPT', 'INDIA', 'SPAIN', 'CHINA', 'PERU']
   },
   {
     theme: 'Ocean Creatures',
-    words: ['SHARK', 'DOLPHIN', 'WHALE', 'OCTOPUS', 'CRAB', 'JELLYFISH', 'SEAHORSE'],
-    bonusWord: 'AQUATIC'
+    spangram: 'AQUATIC',
+    words: ['SHARK', 'DOLPHIN', 'WHALE', 'OCTOPUS', 'CRAB', 'SQUID', 'SEAHORSE']
   },
   {
     theme: 'Gemstones',
-    words: ['RUBY', 'EMERALD', 'OPAL', 'PEARL', 'TOPAZ', 'DIAMOND', 'AMBER'],
-    bonusWord: 'PRECIOUS'
+    spangram: 'PRECIOUS',
+    words: ['RUBY', 'EMERALD', 'OPAL', 'PEARL', 'TOPAZ', 'DIAMOND', 'SAPPHIRE']
   },
   {
     theme: 'Planets',
-    words: ['MERCURY', 'VENUS', 'EARTH', 'MARS', 'JUPITER', 'SATURN', 'NEPTUNE'],
-    bonusWord: 'ORBITAL'
+    spangram: 'SOLARSYSTEM',
+    words: ['MERCURY', 'VENUS', 'EARTH', 'JUPITER', 'SATURN', 'NEPTUNE']
   },
   {
     theme: 'Elements',
-    words: ['OXYGEN', 'CARBON', 'GOLD', 'SILVER', 'IRON', 'COPPER', 'NEON'],
-    bonusWord: 'PERIODIC'
+    spangram: 'PERIODIC',
+    words: ['OXYGEN', 'CARBON', 'GOLD', 'SILVER', 'IRON', 'COPPER', 'NEON', 'ZINC']
   },
   {
     theme: 'Birds',
-    words: ['EAGLE', 'SPARROW', 'OWL', 'ROBIN', 'FALCON', 'PENGUIN', 'FINCH'],
-    bonusWord: 'FEATHER'
+    spangram: 'FEATHER',
+    words: ['EAGLE', 'SPARROW', 'ROBIN', 'FALCON', 'PENGUIN', 'FINCH', 'PARROT']
   },
   {
     theme: 'Colors',
-    words: ['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE', 'PINK'],
-    bonusWord: 'SPECTRUM'
+    spangram: 'SPECTRUM',
+    words: ['BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE', 'PINK', 'TURQUOISE']
   },
   {
     theme: 'Vehicles',
-    words: ['CAR', 'TRUCK', 'PLANE', 'TRAIN', 'BOAT', 'SUBWAY', 'SCOOTER'],
-    bonusWord: 'TRANSPORT'
+    spangram: 'TRANSPORT',
+    words: ['TRUCK', 'PLANE', 'TRAIN', 'BOAT', 'SUBWAY', 'SCOOTER', 'BICYCLE']
   },
   {
     theme: 'Professions',
-    words: ['DOCTOR', 'LAWYER', 'CHEF', 'TEACHER', 'PILOT', 'ACTOR', 'WRITER'],
-    bonusWord: 'CAREERS'
+    spangram: 'CAREERS',
+    words: ['DOCTOR', 'LAWYER', 'CHEF', 'TEACHER', 'PILOT', 'WRITER', 'DENTIST']
   },
   {
     theme: 'Desserts',
-    words: ['CAKE', 'PIE', 'COOKIE', 'DONUT', 'ICECREAM', 'BROWNIE', 'PUDDING'],
-    bonusWord: 'SWEETNESS'
+    spangram: 'SWEETTREATS',
+    words: ['CAKE', 'COOKIE', 'DONUT', 'ICECREAM', 'BROWNIE', 'PUDDING']
   },
   {
     theme: 'Tools',
-    words: ['HAMMER', 'SAW', 'DRILL', 'WRENCH', 'PLIERS', 'LEVEL', 'CHISEL'],
-    bonusWord: 'WORKSHOP'
+    spangram: 'WORKSHOP',
+    words: ['HAMMER', 'DRILL', 'WRENCH', 'PLIERS', 'LEVEL', 'CHISEL', 'MALLET']
   },
   {
     theme: 'Beverages',
-    words: ['COFFEE', 'TEA', 'WATER', 'JUICE', 'SODA', 'WINE', 'MILK'],
-    bonusWord: 'HYDRATION'
+    spangram: 'REFRESHMENT',
+    words: ['COFFEE', 'WATER', 'JUICE', 'SODA', 'MILK', 'LEMONADE', 'COCOA']
   },
   {
     theme: 'Mountains',
-    words: ['EVEREST', 'ALPS', 'ROCKIES', 'ANDES', 'FUJI', 'DENALI', 'OLYMPUS'],
-    bonusWord: 'ALTITUDE'
+    spangram: 'ALTITUDE',
+    words: ['EVEREST', 'ALPS', 'ROCKIES', 'ANDES', 'FUJI', 'DENALI', 'OLYMPUS']
   },
   {
     theme: 'Furniture',
-    words: ['CHAIR', 'TABLE', 'SOFA', 'DESK', 'BED', 'DRESSER', 'SHELF'],
-    bonusWord: 'COMFORT'
+    spangram: 'FURNISHINGS',
+    words: ['CHAIR', 'TABLE', 'SOFA', 'DESK', 'DRESSER', 'SHELF', 'CABINET']
   },
   {
     theme: 'Spices',
-    words: ['SALT', 'PEPPER', 'GARLIC', 'GINGER', 'CUMIN', 'OREGANO', 'THYME'],
-    bonusWord: 'FLAVORING'
+    spangram: 'FLAVORING',
+    words: ['SALT', 'PEPPER', 'GARLIC', 'GINGER', 'CUMIN', 'OREGANO', 'THYME']
   },
   {
     theme: 'Insects',
-    words: ['ANT', 'BEE', 'WASP', 'BEETLE', 'MOTH', 'FLY', 'CRICKET'],
-    bonusWord: 'BUGWORLD'
+    spangram: 'BUGWORLD',
+    words: ['BEETLE', 'WASP', 'MOTH', 'CRICKET', 'HORNET', 'LADYBUG', 'LOCUST']
   },
   {
     theme: 'Dinosaurs',
-    words: ['TREX', 'RAPTOR', 'STEGO', 'PTERO', 'BRONTO', 'TRIKE', 'ANKYLO'],
-    bonusWord: 'JURASSIC'
+    spangram: 'JURASSIC',
+    words: ['TREX', 'RAPTOR', 'DIPLODOCUS', 'ALLOSAURUS', 'ANKYLOSAUR']
   },
   {
     theme: 'Mythical Creatures',
-    words: ['DRAGON', 'PHOENIX', 'GRIFFIN', 'UNICORN', 'CENTAUR', 'MERMAID', 'GOBLIN'],
-    bonusWord: 'FANTASIES'
+    spangram: 'FOLKLORE',
+    words: ['DRAGON', 'PHOENIX', 'GRIFFIN', 'UNICORN', 'CENTAUR', 'GOBLIN']
   },
   {
     theme: 'Dance Styles',
-    words: ['BALLET', 'TANGO', 'SALSA', 'HIPHOP', 'WALTZ', 'JAZZ', 'SAMBA'],
-    bonusWord: 'MOVEMENT'
+    spangram: 'DANCEFLOOR',
+    words: ['BALLET', 'TANGO', 'SALSA', 'HIPHOP', 'WALTZ', 'JAZZ', 'FOXTROT']
   },
   {
     theme: 'Rivers',
-    words: ['NILE', 'AMAZON', 'THAMES', 'DANUBE', 'GANGES', 'CONGO', 'VOLGA'],
-    bonusWord: 'FLOWING'
+    spangram: 'WATERWAYS',
+    words: ['NILE', 'AMAZON', 'THAMES', 'DANUBE', 'GANGES', 'CONGO', 'MEKONG']
   },
   {
     theme: 'Computer Parts',
-    words: ['CPU', 'RAM', 'DISK', 'MOUSE', 'SCREEN', 'SPEAKER', 'CABLE'],
-    bonusWord: 'HARDWARE'
+    spangram: 'HARDWARE',
+    words: ['DISK', 'MOUSE', 'SCREEN', 'SPEAKER', 'CABLE', 'KEYBOARD', 'MODEM']
   },
   {
     theme: 'Board Games',
-    words: ['CHESS', 'CHECKERS', 'MONOPOLY', 'CLUE', 'RISK', 'SCRABBLE', 'UNO'],
-    bonusWord: 'TABLEGAME'
+    spangram: 'FAMILYGAMES',
+    words: ['CHESS', 'CHECKERS', 'MONOPOLY', 'CLUE', 'RISK', 'SCRABBLE']
   },
   {
     theme: 'Clothing Items',
-    words: ['SHIRT', 'PANTS', 'DRESS', 'JACKET', 'SOCKS', 'HAT', 'SCARF'],
-    bonusWord: 'WARDROBE'
+    spangram: 'WARDROBE',
+    words: ['SHIRT', 'PANTS', 'DRESS', 'JACKET', 'SOCKS', 'SCARF', 'SKIRT', 'COAT']
   },
   {
     theme: 'Sea Shells',
-    words: ['CONCH', 'CLAM', 'SCALLOP', 'OYSTER', 'MUSSEL', 'ABALONE', 'COWRIE'],
-    bonusWord: 'SHORELINE'
+    spangram: 'SHORELINE',
+    words: ['CONCH', 'CLAM', 'SCALLOP', 'OYSTER', 'MUSSEL', 'COWRIE', 'WHELK']
   },
   {
     theme: 'Pasta Types',
-    words: ['SPAGHETTI', 'PENNE', 'LASAGNA', 'RAVIOLI', 'FARFALLE', 'ORZO', 'FUSILLI'],
-    bonusWord: 'ALFRESCO'
+    spangram: 'ALDENTE',
+    words: ['ROTINI', 'PENNE', 'LASAGNA', 'RAVIOLI', 'FARFALLE', 'ORZO', 'ZITI']
   },
   {
     theme: 'Condiments',
-    words: ['KETCHUP', 'MUSTARD', 'MAYO', 'RELISH', 'SALSA', 'HUMMUS', 'TAHINI'],
-    bonusWord: 'TOPPINGS'
+    spangram: 'TOPPINGS',
+    words: ['KETCHUP', 'MUSTARD', 'MAYO', 'RELISH', 'SALSA', 'PESTO', 'TAHINI']
   },
   {
     theme: 'Fast Food',
-    words: ['BURGER', 'PIZZA', 'TACO', 'NUGGET', 'FRIES', 'SHAKE', 'HOTDOG'],
-    bonusWord: 'TAKEAWAY'
+    spangram: 'TAKEAWAY',
+    words: ['BURGER', 'PIZZA', 'TACOS', 'BURRITO', 'NUGGETS', 'FRIES', 'SHAKE']
   },
   {
     theme: 'Cities',
-    words: ['LONDON', 'PARIS', 'TOKYO', 'ROME', 'CAIRO', 'DUBAI', 'LIMA'],
-    bonusWord: 'METROPOL'
+    spangram: 'CAPITALCITIES',
+    words: ['LONDON', 'PARIS', 'TOKYO', 'ROME', 'CAIRO', 'MADRID', 'LIMA']
   },
   {
     theme: 'Household Chores',
-    words: ['DUSTING', 'MOPPING', 'LAUNDRY', 'DISHES', 'VACUUM', 'COOKING', 'TRASH'],
-    bonusWord: 'CLEANING'
+    spangram: 'CLEANING',
+    words: ['DUSTING', 'MOPPING', 'LAUNDRY', 'DISHES', 'VACUUM', 'IRONING']
   },
   {
     theme: 'Construction Materials',
-    words: ['WOOD', 'STEEL', 'BRICK', 'CEMENT', 'GLASS', 'STONE', 'PLASTIC'],
-    bonusWord: 'BUILDING'
+    spangram: 'BUILDING',
+    words: ['TIMBER', 'STEEL', 'BRICK', 'CEMENT', 'GLASS', 'MARBLE', 'PLASTIC']
   },
   {
     theme: 'Water Bodies',
-    words: ['OCEAN', 'LAKE', 'RIVER', 'POND', 'SEA', 'STREAM', 'CANAL'],
-    bonusWord: 'AQUATICS'
+    spangram: 'BODIESOFWATER',
+    words: ['OCEAN', 'LAKE', 'RIVER', 'POND', 'STREAM', 'CANAL', 'LAGOON']
   },
   {
     theme: 'Hiking Gear',
-    words: ['BOOTS', 'BACKPACK', 'TENT', 'MAP', 'COMPASS', 'ROPE', 'CANTEEN'],
-    bonusWord: 'OUTDOORS'
+    spangram: 'OUTDOORS',
+    words: ['BOOTS', 'BACKPACK', 'TENT', 'COMPASS', 'ROPE', 'CANTEEN', 'STOVE']
   },
   {
     theme: 'Office Supplies',
-    words: ['PAPER', 'PEN', 'STAPLER', 'FOLDER', 'TAPE', 'SCISSOR', 'MARKER'],
-    bonusWord: 'WORKDESK'
+    spangram: 'WORKDESK',
+    words: ['PAPER', 'PENS', 'STAPLER', 'FOLDER', 'TAPE', 'SCISSORS', 'MARKER']
   },
   {
     theme: 'Space Exploration',
-    words: ['ROCKET', 'SHUTTLE', 'ROVER', 'LANDER', 'STATION', 'PROBE', 'MODULE'],
-    bonusWord: 'MISSIONS'
+    spangram: 'MISSIONS',
+    words: ['ROCKET', 'SHUTTLE', 'ROVER', 'LANDER', 'STATION', 'SATELLITE']
   },
   {
     theme: 'Card Games',
-    words: ['POKER', 'BRIDGE', 'HEARTS', 'SOLITAIRE', 'RUMMY', 'BLACKJACK', 'GO'],
-    bonusWord: 'GAMBLING'
+    spangram: 'DEALMEIN',
+    words: ['POKER', 'BRIDGE', 'HEARTS', 'CANASTA', 'RUMMY', 'EUCHRE', 'WHIST']
   },
   {
     theme: 'Breakfast Foods',
-    words: ['BACON', 'EGGS', 'TOAST', 'CEREAL', 'PANCAKE', 'MUFFIN', 'WAFFLE'],
-    bonusWord: 'MORNING'
+    spangram: 'MORNING',
+    words: ['BACON', 'EGGS', 'TOAST', 'CEREAL', 'PANCAKES', 'MUFFIN', 'WAFFLES']
   },
   {
     theme: 'Exercise Equipment',
-    words: ['WEIGHTS', 'TREADMILL', 'BIKE', 'ROWER', 'MAT', 'BANDS', 'JUMP ROPE'],
-    bonusWord: 'FITNESS'
+    spangram: 'FITNESS',
+    words: ['WEIGHTS', 'DUMBBELL', 'BIKE', 'ROWER', 'BANDS', 'BENCH', 'BARBELL']
   },
   {
     theme: 'Seasonings',
-    words: ['BASIL', 'MINT', 'CHILI', 'DILL', 'SAGE', 'PARSLEY', 'CILANTRO'],
-    bonusWord: 'AROMATIC'
+    spangram: 'AROMATIC',
+    words: ['BASIL', 'CHILI', 'DILL', 'SAGE', 'PARSLEY', 'CILANTRO', 'OREGANO']
   },
   {
     theme: 'Vegetables',
-    words: ['CARROT', 'TOMATO', 'SPINACH', 'ONION', 'POTATO', 'BROCCOLI', 'PEPPER'],
-    bonusWord: 'PRODUCE'
+    spangram: 'PRODUCE',
+    words: ['CARROT', 'TOMATO', 'KALE', 'ONION', 'POTATO', 'BROCCOLI', 'PEPPER']
   },
   {
     theme: 'Occupations',
-    words: ['ENGINEER', 'ARTIST', 'NURSE', 'PLUMBER', 'FARMER', 'DRIVER', 'CLERK'],
-    bonusWord: 'WORKLIFE'
+    spangram: 'LINEOFWORK',
+    words: ['ENGINEER', 'ARTIST', 'NURSE', 'PLUMBER', 'FARMER', 'DRIVER']
   },
   {
     theme: 'Stationery',
-    words: ['PENCIL', 'ERASER', 'RULER', 'NOTEBOOK', 'GLUE', 'BINDER', 'STAPLES'],
-    bonusWord: 'SUPPLIES'
+    spangram: 'SUPPLIES',
+    words: ['PENCIL', 'ERASER', 'RULER', 'NOTEBOOK', 'GLUE', 'BINDER', 'CHALK']
   },
   {
     theme: 'Festivals',
-    words: ['DIWALI', 'EASTER', 'HANUKKAH', 'EID', 'CARNIVAL', 'LUNAR', 'OCTOBERFEST'],
-    bonusWord: 'CELEBRATE'
+    spangram: 'CELEBRATE',
+    words: ['DIWALI', 'EASTER', 'HANUKKAH', 'CARNIVAL', 'HOLI', 'KWANZAA']
   },
   {
     theme: 'Currencies',
-    words: ['DOLLAR', 'EURO', 'YEN', 'POUND', 'YUAN', 'RUPEE', 'PESO'],
-    bonusWord: 'EXCHANGE'
+    spangram: 'EXCHANGE',
+    words: ['DOLLAR', 'EURO', 'POUND', 'YUAN', 'RUPEE', 'PESO', 'RAND', 'SHILLING']
   },
   {
     theme: 'Grains',
-    words: ['RICE', 'WHEAT', 'CORN', 'BARLEY', 'OATS', 'QUINOA', 'RYE'],
-    bonusWord: 'HARVESTS'
+    spangram: 'HARVESTS',
+    words: ['RICE', 'WHEAT', 'CORN', 'BARLEY', 'OATS', 'QUINOA', 'MILLET', 'SPELT']
   },
   {
     theme: 'Legendary Figures',
-    words: ['ZEUS', 'THOR', 'BUDDHA', 'MOSES', 'ARTHUR', 'CLAUS', 'HERCULES'],
-    bonusWord: 'FOLKLORE'
+    spangram: 'FOLKLORE',
+    words: ['ZEUS', 'THOR', 'ODIN', 'ARTHUR', 'MERLIN', 'HERCULES', 'ACHILLES']
   },
   {
     theme: 'Photography Terms',
-    words: ['SHUTTER', 'LENS', 'APERTURE', 'FLASH', 'FOCUS', 'FILTER', 'ZOOM'],
-    bonusWord: 'SNAPSHOT'
+    spangram: 'SNAPSHOT',
+    words: ['SHUTTER', 'LENS', 'APERTURE', 'FLASH', 'FOCUS', 'FILTER', 'PIXEL']
   },
   {
     theme: 'Personality Traits',
-    words: ['BRAVE', 'HONEST', 'LOYAL', 'KIND', 'SMART', 'PATIENT', 'CHEERFUL'],
-    bonusWord: 'QUALITIES'
+    spangram: 'QUALITIES',
+    words: ['BRAVE', 'HONEST', 'LOYAL', 'KIND', 'WISE', 'PATIENT', 'CHEERFUL']
   },
   {
     theme: 'Instruments',
-    words: ['RULER', 'COMPASS', 'CALIPER', 'PROTRACTOR', 'SCALE', 'METER', 'GAUGE'],
-    bonusWord: 'MEASURES'
+    spangram: 'MEASURING',
+    words: ['RULER', 'COMPASS', 'CALIPER', 'LEVEL', 'SCALE', 'METER', 'GAUGE']
   },
   {
     theme: 'Astronomy Terms',
-    words: ['ORBIT', 'ECLIPSE', 'NOVA', 'QUASAR', 'PULSAR', 'NEBULA', 'METEOR'],
-    bonusWord: 'STARGAZER'
+    spangram: 'STARGAZER',
+    words: ['ORBIT', 'ECLIPSE', 'NOVA', 'QUASAR', 'PULSAR', 'NEBULA', 'COMET']
   },
   {
     theme: 'Garden Tools',
-    words: ['SHOVEL', 'RAKE', 'HOE', 'TROWEL', 'SHEARS', 'SPADE', 'PRUNER'],
-    bonusWord: 'PLANTING'
+    spangram: 'PLANTING',
+    words: ['SHOVEL', 'RAKE', 'TROWEL', 'SHEARS', 'SPADE', 'PRUNER', 'LOPPERS']
   },
   {
     theme: 'Electrical Components',
-    words: ['SWITCH', 'RELAY', 'DIODE', 'RESISTOR', 'CAPACITOR', 'FUSE', 'WIRE'],
-    bonusWord: 'CIRCUITS'
+    spangram: 'CIRCUITRY',
+    words: ['SWITCH', 'RELAY', 'DIODE', 'RESISTOR', 'BATTERY', 'FUSE', 'WIRE']
   },
   {
     theme: 'Music Genres',
-    words: ['ROCK', 'JAZZ', 'CLASSICAL', 'POP', 'COUNTRY', 'METAL', 'FOLK'],
-    bonusWord: 'MELODIES'
+    spangram: 'MUSICGENRES',
+    words: ['ROCK', 'JAZZ', 'BLUES', 'COUNTRY', 'METAL', 'FOLK', 'FUNK', 'SOUL']
   },
   {
     theme: 'Literary Genres',
-    words: ['ROMANCE', 'MYSTERY', 'SCIFI', 'FANTASY', 'HORROR', 'DRAMA', 'COMEDY'],
-    bonusWord: 'BOOKWORM'
+    spangram: 'LITERATURE',
+    words: ['ROMANCE', 'MYSTERY', 'SCIFI', 'FANTASY', 'HORROR', 'COMEDY']
   },
   {
     theme: 'Cat Breeds',
-    words: ['PERSIAN', 'SIAMESE', 'MAINE', 'BENGAL', 'RAGDOLL', 'SPHYNX', 'BURMESE'],
-    bonusWord: 'FELINES'
+    spangram: 'FELINES',
+    words: ['PERSIAN', 'SIAMESE', 'BENGAL', 'RAGDOLL', 'SPHYNX', 'SIBERIAN']
   },
   {
     theme: 'Dog Breeds',
-    words: ['LABRADOR', 'TERRIER', 'COLLIE', 'HUSKY', 'BEAGLE', 'POODLE', 'BOXER'],
-    bonusWord: 'CANINES'
+    spangram: 'CANINES',
+    words: ['LABRADOR', 'COLLIE', 'HUSKY', 'BEAGLE', 'POODLE', 'BOXER', 'CORGI']
   },
   {
     theme: 'Film Genres',
-    words: ['ACTION', 'COMEDY', 'DRAMA', 'HORROR', 'WESTERN', 'ROMANCE', 'THRILLER'],
-    bonusWord: 'CINEMATIC'
+    spangram: 'CINEMATIC',
+    words: ['COMEDY', 'DRAMA', 'HORROR', 'WESTERN', 'ROMANCE', 'THRILLER']
   },
   {
     theme: 'Fish Types',
-    words: ['SALMON', 'TUNA', 'TROUT', 'BASS', 'COD', 'CATFISH', 'GOLDFISH'],
-    bonusWord: 'SWIMMING'
+    spangram: 'SWIMMING',
+    words: ['SALMON', 'TUNA', 'TROUT', 'BASS', 'CATFISH', 'GOLDFISH', 'MARLIN']
   },
   {
     theme: 'Lizards',
-    words: ['GECKO', 'IGUANA', 'SKINK', 'MONITOR', 'ANOLE', 'DRAGON', 'CHAMELEON'],
-    bonusWord: 'REPTILES'
+    spangram: 'REPTILES',
+    words: ['GECKO', 'IGUANA', 'CHAMELEON', 'SKINK', 'ANOLE', 'KOMODO', 'TEGU']
   },
   {
     theme: 'Dairy Products',
-    words: ['MILK', 'CHEESE', 'YOGURT', 'BUTTER', 'CREAM', 'ICECREAM', 'WHEY'],
-    bonusWord: 'CALCIUM'
+    spangram: 'DAIRYFARM',
+    words: ['MILK', 'CHEESE', 'YOGURT', 'BUTTER', 'CREAM', 'ICECREAM', 'WHEY']
   },
   {
     theme: 'Sports Equipment',
-    words: ['BALL', 'BAT', 'RACKET', 'SKATES', 'HELMET', 'NET', 'STICK'],
-    bonusWord: 'ATHLETICS'
+    spangram: 'ATHLETICS',
+    words: ['BALL', 'RACKET', 'SKATES', 'HELMET', 'STICK', 'GLOVE', 'GOGGLES']
   },
   {
     theme: 'Nuts and Seeds',
-    words: ['ALMOND', 'PEANUT', 'WALNUT', 'CASHEW', 'PECAN', 'PISTACHIO', 'SUNFLOWER'],
-    bonusWord: 'PROTEINRY'
+    spangram: 'TRAILMIX',
+    words: ['ALMOND', 'PEANUT', 'WALNUT', 'CASHEW', 'PECAN', 'POPPY', 'SESAME']
   },
   {
     theme: 'Mental States',
-    words: ['HAPPY', 'SAD', 'ANGRY', 'EXCITED', 'CALM', 'NERVOUS', 'BORED'],
-    bonusWord: 'EMOTIONS'
+    spangram: 'EMOTIONS',
+    words: ['HAPPY', 'ANGRY', 'EXCITED', 'CALM', 'NERVOUS', 'BORED', 'JEALOUS']
   },
   {
     theme: 'Baking Ingredients',
-    words: ['FLOUR', 'SUGAR', 'BUTTER', 'EGGS', 'YEAST', 'SALT', 'VANILLA'],
-    bonusWord: 'CONFECTS'
+    spangram: 'BAKERSPANTRY',
+    words: ['FLOUR', 'SUGAR', 'BUTTER', 'EGGS', 'YEAST', 'SALT', 'VANILLA']
   },
   {
     theme: 'Rodents',
-    words: ['MOUSE', 'RAT', 'HAMSTER', 'SQUIRREL', 'BEAVER', 'GUINEA PIG', 'GERBIL'],
-    bonusWord: 'CRITTERS'
+    spangram: 'CRITTERS',
+    words: ['MOUSE', 'HAMSTER', 'SQUIRREL', 'BEAVER', 'GERBIL', 'CHIPMUNK']
   },
   {
     theme: 'Candles',
-    words: ['TAPER', 'PILLAR', 'VOTIVE', 'TEA LIGHT', 'FLOATING', 'JAR', 'SCENTED'],
-    bonusWord: 'LIGHTING'
+    spangram: 'LIGHTING',
+    words: ['TAPER', 'PILLAR', 'VOTIVE', 'TEALIGHT', 'FLOATING', 'SCENTED']
   },
   {
     theme: 'Cartoon Characters',
-    words: ['MICKEY', 'BUGS', 'HOMER', 'POPEYE', 'GARFIELD', 'SNOOPY', 'SHREK'],
-    bonusWord: 'ANIMATED'
+    spangram: 'ANIMATED',
+    words: ['MICKEY', 'BUGS', 'HOMER', 'POPEYE', 'GARFIELD', 'SNOOPY', 'SHREK']
   },
   {
     theme: 'Facial Features',
-    words: ['EYES', 'NOSE', 'MOUTH', 'EARS', 'CHIN', 'CHEEKS', 'FOREHEAD'],
-    bonusWord: 'VISAGE'
+    spangram: 'VISAGE',
+    words: ['EYES', 'NOSE', 'MOUTH', 'EARS', 'CHIN', 'CHEEKS', 'FOREHEAD', 'DIMPLES']
   },
   {
     theme: 'Sushi Types',
-    words: ['MAKI', 'NIGIRI', 'SASHIMI', 'TEMAKI', 'URAMAKI', 'GUNKAN', 'TEMARI'],
-    bonusWord: 'JAPANESE'
+    spangram: 'JAPANESEFOOD',
+    words: ['MAKI', 'NIGIRI', 'SASHIMI', 'TEMAKI', 'URAMAKI', 'TEMARI']
   },
   {
     theme: 'Winter Activities',
-    words: ['SKIING', 'SKATING', 'SLEDDING', 'SNOWBALL', 'HOCKEY', 'CURLING', 'IGLOO'],
-    bonusWord: 'SEASONAL'
+    spangram: 'ICEANDSNOW',
+    words: ['SKIING', 'SKATING', 'SLEDDING', 'LUGE', 'HOCKEY', 'CURLING']
   },
   {
     theme: 'Summer Activities',
-    words: ['SWIMMING', 'HIKING', 'CAMPING', 'FISHING', 'SAILING', 'SURFING', 'BIKING'],
-    bonusWord: 'SUNSHINE'
+    spangram: 'SUNSHINE',
+    words: ['SWIMMING', 'HIKING', 'CAMPING', 'SURFING', 'BIKING', 'PICNIC']
   },
   {
     theme: 'Martial Arts',
-    words: ['KARATE', 'JUDO', 'KUNG FU', 'TAI CHI', 'BOXING', 'AIKIDO', 'TAEKWONDO'],
-    bonusWord: 'DISCIPLINE'
+    spangram: 'DISCIPLINE',
+    words: ['KARATE', 'JUDO', 'SUMO', 'KENDO', 'BOXING', 'AIKIDO', 'JUJITSU']
   },
   {
     theme: 'Shoe Types',
-    words: ['SNEAKER', 'SANDAL', 'BOOT', 'HEEL', 'LOAFER', 'OXFORD', 'FLIP FLOP'],
-    bonusWord: 'FOOTWEAR'
+    spangram: 'FOOTWEAR',
+    words: ['SNEAKER', 'SANDAL', 'BOOT', 'SLIPPER', 'LOAFER', 'OXFORD', 'CLOG']
   },
   {
     theme: 'Baked Goods',
-    words: ['BREAD', 'ROLL', 'MUFFIN', 'COOKIE', 'CROISSANT', 'BAGEL', 'DONUT'],
-    bonusWord: 'PASTRIES'
+    spangram: 'BAKERY',
+    words: ['BREAD', 'ROLL', 'MUFFIN', 'COOKIE', 'SCONE', 'BAGEL', 'DONUT', 'ECLAIR']
   },
   {
     theme: 'School Subjects',
-    words: ['MATH', 'SCIENCE', 'HISTORY', 'ENGLISH', 'ART', 'MUSIC', 'GEOGRAPHY'],
-    bonusWord: 'LEARNING'
+    spangram: 'CURRICULUM',
+    words: ['ALGEBRA', 'SCIENCE', 'HISTORY', 'ENGLISH', 'MUSIC', 'DRAMA']
   },
   {
     theme: 'Fairytale Characters',
-    words: ['WITCH', 'PRINCE', 'GIANT', 'FAIRY', 'WIZARD', 'TROLL', 'PRINCESS'],
-    bonusWord: 'STORYBOOK'
+    spangram: 'STORYBOOK',
+    words: ['WITCH', 'PRINCE', 'GOBLIN', 'FAIRY', 'WIZARD', 'TROLL', 'DRAGON']
   },
   {
     theme: 'Cakes',
-    words: ['CHOCOLATE', 'VANILLA', 'CARROT', 'CHEESECAKE', 'ANGEL', 'RED VELVET', 'POUND'],
-    bonusWord: 'DELICIOUS'
+    spangram: 'DESSERTS',
+    words: ['LEMON', 'VANILLA', 'CARROT', 'SPONGE', 'ANGEL', 'COFFEE', 'POUND']
   },
   {
     theme: 'Clocks',
-    words: ['ANALOG', 'DIGITAL', 'CUCKOO', 'SUNDIAL', 'PENDULUM', 'ALARM', 'GRANDFATHER'],
-    bonusWord: 'TIMEPIECE'
+    spangram: 'TIMEPIECE',
+    words: ['ANALOG', 'DIGITAL', 'CUCKOO', 'SUNDIAL', 'PENDULUM', 'ALARM']
   },
   {
     theme: 'Circus Acts',
-    words: ['CLOWN', 'ACROBAT', 'JUGGLER', 'TIGHTROPE', 'RINGMASTER', 'LION TAMER', 'TRAPEZE'],
-    bonusWord: 'CARNIVAL'
+    spangram: 'UNDERTHEBIGTOP',
+    words: ['CLOWN', 'ACROBAT', 'JUGGLER', 'UNICYCLE', 'TRAPEZE']
   },
   {
     theme: 'Beach Items',
-    words: ['TOWEL', 'UMBRELLA', 'SUNSCREEN', 'SANDALS', 'BUCKET', 'BALL', 'CHAIR'],
-    bonusWord: 'SHORELINE'
+    spangram: 'SEASIDE',
+    words: ['TOWEL', 'UMBRELLA', 'SHOVEL', 'SANDALS', 'BUCKET', 'BALL', 'CHAIR']
   },
   {
     theme: 'Winged Insects',
-    words: ['BUTTERFLY', 'DRAGONFLY', 'MOTH', 'WASP', 'BEE', 'LADYBUG', 'MOSQUITO'],
-    bonusWord: 'FLUTTERS'
+    spangram: 'AIRBORNE',
+    words: ['HORNET', 'GNAT', 'MOTH', 'WASP', 'LADYBUG', 'MOSQUITO', 'FIREFLY']
   },
   {
     theme: 'Kitchen Utensils',
-    words: ['SPOON', 'FORK', 'KNIFE', 'WHISK', 'SPATULA', 'TONGS', 'LADLE'],
-    bonusWord: 'CULINARY'
+    spangram: 'INTHEKITCHEN',
+    words: ['SPOON', 'FORK', 'KNIFE', 'WHISK', 'SPATULA', 'TONGS', 'LADLE']
   },
   {
     theme: 'Herbs',
-    words: ['BASIL', 'ROSEMARY', 'THYME', 'MINT', 'CILANTRO', 'PARSLEY', 'DILL'],
-    bonusWord: 'FRAGRANT'
+    spangram: 'GARNISH',
+    words: ['BASIL', 'ROSEMARY', 'THYME', 'MINT', 'CILANTRO', 'PARSLEY', 'DILL']
   },
   {
     theme: 'Astronomy Tools',
-    words: ['TELESCOPE', 'COMPASS', 'SEXTANT', 'BINOCULAR', 'RADAR', 'GPS', 'CHART'],
-    bonusWord: 'STARVIEW'
+    spangram: 'STARGAZER',
+    words: ['ORRERY', 'SEXTANT', 'TELESCOPE', 'ASTROLABE', 'EYEPIECE']
   },
   {
     theme: 'Building Parts',
-    words: ['ROOF', 'WALL', 'DOOR', 'WINDOW', 'FLOOR', 'CEILING', 'STAIR'],
-    bonusWord: 'STRUCTURE'
+    spangram: 'STRUCTURE',
+    words: ['ROOF', 'WALL', 'DOOR', 'WINDOW', 'FLOOR', 'CEILING', 'STAIRCASE']
   },
   {
     theme: 'College Majors',
-    words: ['BIOLOGY', 'PHYSICS', 'HISTORY', 'ENGLISH', 'PSYCHOLOGY', 'BUSINESS', 'ART'],
-    bonusWord: 'ACADEMICS'
+    spangram: 'UNIVERSITY',
+    words: ['BIOLOGY', 'PHYSICS', 'MATH', 'ENGLISH', 'BUSINESS', 'MUSIC']
   },
   {
     theme: 'Picnic Items',
-    words: ['BASKET', 'BLANKET', 'SANDWICH', 'FRUIT', 'DRINK', 'NAPKIN', 'PLATES'],
-    bonusWord: 'OUTDOORS'
+    spangram: 'ONTHEGRASS',
+    words: ['BASKET', 'BLANKET', 'SANDWICH', 'FRUIT', 'NAPKIN', 'PLATES']
   },
   {
     theme: 'Travel Destinations',
-    words: ['HAWAII', 'PARIS', 'SAFARI', 'VENICE', 'CRUISE', 'ALPS', 'BALI'],
-    bonusWord: 'VACATION'
+    spangram: 'VACATION',
+    words: ['HAWAII', 'PARIS', 'VENICE', 'ALPS', 'BALI', 'ROME', 'TOKYO', 'LONDON']
   },
   {
     theme: 'Coffee Types',
-    words: ['ESPRESSO', 'LATTE', 'MOCHA', 'AMERICANO', 'CAPPUCCINO', 'MACCHIATO', 'COLD BREW'],
-    bonusWord: 'CAFFEINE'
+    spangram: 'CAFFEINE',
+    words: ['ESPRESSO', 'LATTE', 'MOCHA', 'CORTADO', 'DECAF', 'CAPPUCCINO']
   },
   {
     theme: 'Modes of Transport',
-    words: ['BUS', 'BIKE', 'WALK', 'DRIVE', 'TAXI', 'METRO', 'FERRY'],
-    bonusWord: 'COMMUTER'
+    spangram: 'GETTINGAROUND',
+    words: ['BIKE', 'WALK', 'DRIVE', 'TAXI', 'METRO', 'FERRY', 'AIRPLANE']
   },
   {
-    theme: 'Currencies',
-    words: ['DOLLAR', 'EURO', 'YEN', 'POUND', 'YUAN', 'RUPEE', 'BITCOIN'],
-    bonusWord: 'MONETARY'
+    theme: 'Chess',
+    spangram: 'BLACKANDWHITE',
+    words: ['KING', 'QUEEN', 'ROOK', 'BISHOP', 'KNIGHT', 'PAWN', 'GAMBIT']
   },
   {
     theme: 'Art Styles',
-    words: ['CUBISM', 'REALISM', 'POP ART', 'BAROQUE', 'ABSTRACT', 'DADA', 'SURREAL'],
-    bonusWord: 'CREATIVE'
+    spangram: 'ARTMOVEMENTS',
+    words: ['CUBISM', 'REALISM', 'BAROQUE', 'ABSTRACT', 'DADA', 'DECO']
   },
   {
     theme: 'Farm Animals',
-    words: ['COW', 'HORSE', 'PIG', 'CHICKEN', 'SHEEP', 'GOAT', 'DONKEY'],
-    bonusWord: 'BARNYARD'
+    spangram: 'OLDMACDONALD',
+    words: ['HORSE', 'CHICKEN', 'SHEEP', 'GOAT', 'DUCK', 'DONKEY', 'LLAMA']
   },
   {
     theme: 'Cocktails',
-    words: ['MARTINI', 'MOJITO', 'MARGARITA', 'DAIQUIRI', 'COSMOPOLITAN', 'MANHATTAN', 'NEGRONI'],
-    bonusWord: 'MIXOLOGY'
+    spangram: 'HAPPYHOUR',
+    words: ['MARTINI', 'MOJITO', 'GIMLET', 'DAIQUIRI', 'JULEP', 'NEGRONI']
   },
   {
     theme: 'Video Games',
-    words: ['MARIO', 'TETRIS', 'MINECRAFT', 'FORTNITE', 'ZELDA', 'PACMAN', 'SONIC'],
-    bonusWord: 'GAMEPLAY'
+    spangram: 'PLAYERONE',
+    words: ['MARIO', 'TETRIS', 'DOOM', 'FORTNITE', 'ZELDA', 'PACMAN', 'SONIC']
   },
   {
     theme: 'Musical Symbols',
-    words: ['TREBLE', 'BASS', 'SHARP', 'FLAT', 'NOTE', 'REST', 'CLEF'],
-    bonusWord: 'NOTATION'
+    spangram: 'NOTATION',
+    words: ['TREBLE', 'BASS', 'SHARP', 'FLAT', 'NOTE', 'REST', 'CLEF', 'CRESCENDO']
   },
   {
     theme: 'Cuts of Meat',
-    words: ['SIRLOIN', 'CHUCK', 'RIBEYE', 'TENDERLOIN', 'FLANK', 'BRISKET', 'ROUND'],
-    bonusWord: 'BUTCHERY'
+    spangram: 'BUTCHERY',
+    words: ['SIRLOIN', 'CHUCK', 'RIBEYE', 'SHANK', 'FLANK', 'BRISKET', 'ROUND']
   },
   {
     theme: 'Mythical Places',
-    words: ['ATLANTIS', 'VALHALLA', 'OLYMPUS', 'AVALON', 'ELYSIUM', 'SHANGRI-LA', 'EDEN'],
-    bonusWord: 'LEGENDARY'
+    spangram: 'LEGENDARY',
+    words: ['ATLANTIS', 'VALHALLA', 'OLYMPUS', 'AVALON', 'ASGARD', 'EDEN']
   },
   {
     theme: 'Breakfast Cereals',
-    words: ['CHEERIOS', 'FROSTED', 'GRANOLA', 'CORNFLAKES', 'OATMEAL', 'RAISIN', 'MUESLI'],
-    bonusWord: 'MORNING'
+    spangram: 'BOWLOFCEREAL',
+    words: ['CHEERIOS', 'CHEX', 'GRANOLA', 'BRAN', 'OATMEAL', 'MUESLI']
+  },
+  {
+    theme: 'Constellations',
+    spangram: 'STARPATTERNS',
+    words: ['ORION', 'PEGASUS', 'GEMINI', 'LYRA', 'DRACO', 'ANDROMEDA']
+  },
+  {
+    theme: 'Knots',
+    spangram: 'ROPEWORK',
+    words: ['BOWLINE', 'SLIPKNOT', 'GRANNY', 'NOOSE', 'SHEEPSHANK', 'REEF']
+  },
+  {
+    theme: 'Pizza Toppings',
+    spangram: 'ONTHEPIZZA',
+    words: ['PEPPERONI', 'SAUSAGE', 'MUSHROOM', 'ONION', 'PINEAPPLE']
+  },
+  {
+    theme: 'Yoga Poses',
+    spangram: 'ASANAS',
+    words: ['COBRA', 'LOTUS', 'WARRIOR', 'PIGEON', 'TREE', 'BRIDGE', 'PLANK', 'CROW']
+  },
+  {
+    theme: 'Bread Types',
+    spangram: 'BREADBASKET',
+    words: ['BAGUETTE', 'SOURDOUGH', 'BRIOCHE', 'CIABATTA', 'BAGEL']
+  },
+  {
+    theme: 'Cheeses',
+    spangram: 'CHEESEBOARD',
+    words: ['CHEDDAR', 'BRIE', 'GOUDA', 'FETA', 'PARMESAN', 'CAMEMBERT']
+  },
+  {
+    theme: 'Hats',
+    spangram: 'HEADWEAR',
+    words: ['FEDORA', 'BERET', 'BEANIE', 'BOWLER', 'BONNET', 'TURBAN', 'TOQUE']
+  },
+  {
+    theme: 'Sandwiches',
+    spangram: 'DELICOUNTER',
+    words: ['REUBEN', 'PANINI', 'CLUB', 'GYRO', 'SUBMARINE', 'MELT', 'HERO']
+  },
+  {
+    theme: 'Soups',
+    spangram: 'SOUPOFTHEDAY',
+    words: ['MINESTRONE', 'CHOWDER', 'BISQUE', 'GUMBO', 'GAZPACHO']
+  },
+  {
+    theme: 'Berries',
+    spangram: 'BERRYPATCH',
+    words: ['BLUEBERRY', 'RASPBERRY', 'CRANBERRY', 'CURRANT', 'ACAI']
+  },
+  {
+    theme: 'Mushrooms',
+    spangram: 'WILDFUNGI',
+    words: ['SHIITAKE', 'PORCINI', 'OYSTER', 'ENOKI', 'TRUFFLE', 'BUTTON']
+  },
+  {
+    theme: 'Root Vegetables',
+    spangram: 'ROOTCELLAR',
+    words: ['CARROT', 'TURNIP', 'RADISH', 'BEET', 'RUTABAGA', 'CELERIAC']
+  },
+  {
+    theme: 'Tea Varieties',
+    spangram: 'TEACADDY',
+    words: ['OOLONG', 'DARJEELING', 'ASSAM', 'CHAI', 'MATCHA', 'CHAMOMILE']
+  },
+  {
+    theme: 'Big Cats',
+    spangram: 'WILDCATS',
+    words: ['LION', 'TIGER', 'LEOPARD', 'JAGUAR', 'CHEETAH', 'PANTHER', 'LYNX']
+  },
+  {
+    theme: 'Primates',
+    spangram: 'APESANDMONKEYS',
+    words: ['GORILLA', 'BABOON', 'GIBBON', 'MANDRILL', 'TAMARIN']
+  },
+  {
+    theme: 'Snakes',
+    spangram: 'SERPENTS',
+    words: ['PYTHON', 'COBRA', 'VIPER', 'MAMBA', 'ANACONDA', 'ADDER', 'TAIPAN']
+  },
+  {
+    theme: 'Arctic Animals',
+    spangram: 'FROZENNORTH',
+    words: ['WALRUS', 'NARWHAL', 'CARIBOU', 'PUFFIN', 'LEMMING', 'SEAL']
+  },
+  {
+    theme: 'Desert Animals',
+    spangram: 'DUNEDWELLERS',
+    words: ['CAMEL', 'SCORPION', 'FENNEC', 'MEERKAT', 'JACKAL', 'ORYX']
+  },
+  {
+    theme: 'Marsupials',
+    spangram: 'INTHEPOUCH',
+    words: ['KANGAROO', 'KOALA', 'WOMBAT', 'WALLABY', 'OPOSSUM', 'BILBY']
+  },
+  {
+    theme: 'Birds of Prey',
+    spangram: 'RAPTORS',
+    words: ['HAWK', 'FALCON', 'EAGLE', 'OSPREY', 'KESTREL', 'BUZZARD', 'CONDOR']
+  },
+  {
+    theme: 'Horse Breeds',
+    spangram: 'HORSEBREEDS',
+    words: ['ARABIAN', 'MUSTANG', 'APPALOOSA', 'MORGAN', 'SHETLAND']
+  },
+  {
+    theme: 'Baby Animals',
+    spangram: 'NEWBORNS',
+    words: ['PUPPY', 'KITTEN', 'CALF', 'FOAL', 'LAMB', 'JOEY', 'DUCKLING', 'CHICK']
+  },
+  {
+    theme: 'Animal Homes',
+    spangram: 'DWELLINGS',
+    words: ['NEST', 'HIVE', 'BURROW', 'LAIR', 'WARREN', 'KENNEL', 'AERIE', 'COOP']
+  },
+  {
+    theme: 'Animal Sounds',
+    spangram: 'ANIMALTALK',
+    words: ['BARK', 'MEOW', 'NEIGH', 'QUACK', 'GROWL', 'CHIRP', 'BLEAT', 'CROAK']
+  },
+  {
+    theme: 'Clouds',
+    spangram: 'CLOUDCOVER',
+    words: ['CIRRUS', 'CUMULUS', 'STRATUS', 'MAMMATUS', 'LENTICULAR']
+  },
+  {
+    theme: 'Rocks and Minerals',
+    spangram: 'GEOLOGY',
+    words: ['GRANITE', 'BASALT', 'QUARTZ', 'MARBLE', 'GYPSUM', 'SHALE', 'FLINT']
+  },
+  {
+    theme: 'Volcanoes',
+    spangram: 'VOLCANO',
+    words: ['ETNA', 'FUJI', 'VESUVIUS', 'KRAKATOA', 'PINATUBO', 'STROMBOLI']
+  },
+  {
+    theme: 'Coastal Features',
+    spangram: 'COASTLINE',
+    words: ['BEACH', 'CLIFF', 'COVE', 'LAGOON', 'ESTUARY', 'HEADLAND', 'DUNE']
+  },
+  {
+    theme: 'Islands',
+    spangram: 'ISLANDHOPPING',
+    words: ['CUBA', 'BALI', 'CRETE', 'SICILY', 'TAHITI', 'HAWAII', 'JAVA']
+  },
+  {
+    theme: 'Deserts',
+    spangram: 'WASTELANDS',
+    words: ['SAHARA', 'GOBI', 'MOJAVE', 'KALAHARI', 'ATACAMA', 'SONORAN']
+  },
+  {
+    theme: 'US States',
+    spangram: 'FIFTYSTATES',
+    words: ['TEXAS', 'OHIO', 'MAINE', 'IDAHO', 'OREGON', 'NEVADA', 'ALASKA']
+  },
+  {
+    theme: 'European Countries',
+    spangram: 'EUROPEAN',
+    words: ['FRANCE', 'SPAIN', 'ITALY', 'GREECE', 'NORWAY', 'POLAND', 'SWEDEN']
+  },
+  {
+    theme: 'African Countries',
+    spangram: 'AFRICAN',
+    words: ['KENYA', 'EGYPT', 'GHANA', 'NIGERIA', 'MOROCCO', 'ETHIOPIA', 'MALI']
+  },
+  {
+    theme: 'Languages',
+    spangram: 'MOTHERTONGUE',
+    words: ['FRENCH', 'SPANISH', 'GERMAN', 'ARABIC', 'RUSSIAN', 'THAI']
+  },
+  {
+    theme: 'Greek Letters',
+    spangram: 'GREEKALPHABET',
+    words: ['OMEGA', 'SIGMA', 'DELTA', 'GAMMA', 'THETA', 'LAMBDA', 'BETA']
+  },
+  {
+    theme: 'Shapes',
+    spangram: 'GEOMETRY',
+    words: ['CIRCLE', 'SQUARE', 'TRIANGLE', 'HEXAGON', 'PENTAGON', 'HEART']
+  },
+  {
+    theme: 'Math Terms',
+    spangram: 'MATHEMATICS',
+    words: ['FRACTION', 'INTEGER', 'EQUATION', 'VARIABLE', 'MEDIAN']
+  },
+  {
+    theme: 'Units of Measure',
+    spangram: 'STANDARDUNITS',
+    words: ['GALLON', 'POUND', 'OUNCE', 'METER', 'LITER', 'QUART', 'MILE']
+  },
+  {
+    theme: 'Programming Languages',
+    spangram: 'PROGRAMMING',
+    words: ['PYTHON', 'RUBY', 'PERL', 'COBOL', 'FORTRAN', 'PASCAL', 'BASIC']
+  },
+  {
+    theme: 'Keyboard Keys',
+    spangram: 'KEYBOARD',
+    words: ['SHIFT', 'ENTER', 'ESCAPE', 'DELETE', 'SPACE', 'CONTROL', 'INSERT']
+  },
+  {
+    theme: 'Lab Equipment',
+    spangram: 'LABORATORY',
+    words: ['BEAKER', 'FLASK', 'BURNER', 'MICROSCOPE', 'FUNNEL', 'TONGS']
+  },
+  {
+    theme: 'Bones',
+    spangram: 'SKELETON',
+    words: ['FEMUR', 'TIBIA', 'SKULL', 'PELVIS', 'RADIUS', 'STERNUM', 'FIBULA']
+  },
+  {
+    theme: 'Organs',
+    spangram: 'ANATOMY',
+    words: ['HEART', 'LIVER', 'KIDNEY', 'BRAIN', 'STOMACH', 'SPLEEN', 'BLADDER']
+  },
+  {
+    theme: 'Hospital Words',
+    spangram: 'HEALTHCARE',
+    words: ['NURSE', 'DOCTOR', 'SURGEON', 'PATIENT', 'STRETCHER', 'WARD']
+  },
+  {
+    theme: 'Virtues',
+    spangram: 'GOODCHARACTER',
+    words: ['HONESTY', 'COURAGE', 'PATIENCE', 'KINDNESS', 'MERCY']
+  },
+  {
+    theme: 'Greek Gods',
+    spangram: 'OLYMPIANS',
+    words: ['ZEUS', 'HERA', 'APOLLO', 'ATHENA', 'POSEIDON', 'ARTEMIS', 'ARES']
+  },
+  {
+    theme: 'Roman Gods',
+    spangram: 'PANTHEON',
+    words: ['JUPITER', 'PLUTO', 'VENUS', 'NEPTUNE', 'MINERVA', 'JUNO', 'DIANA']
+  },
+  {
+    theme: 'Egyptian Gods',
+    spangram: 'ANCIENTEGYPT',
+    words: ['OSIRIS', 'ISIS', 'HORUS', 'ANUBIS', 'THOTH', 'BASTET', 'AMUN']
+  },
+  {
+    theme: 'Zodiac Signs',
+    spangram: 'HOROSCOPE',
+    words: ['TAURUS', 'GEMINI', 'VIRGO', 'LIBRA', 'PISCES', 'ARIES', 'CANCER']
+  },
+  {
+    theme: 'Poker Terms',
+    spangram: 'TEXASHOLDEM',
+    words: ['BLUFF', 'FLUSH', 'RIVER', 'STRAIGHT', 'ANTE', 'CHECK', 'RAISE']
+  },
+  {
+    theme: 'Playground Equipment',
+    spangram: 'PLAYGROUND',
+    words: ['SLIDE', 'SWING', 'SEESAW', 'SANDBOX', 'TUNNEL', 'JUNGLEGYM']
+  },
+  {
+    theme: 'Toys',
+    spangram: 'TOYCHEST',
+    words: ['DOLL', 'PINWHEEL', 'KITE', 'PUZZLE', 'BLOCKS', 'MARBLES', 'ROBOT']
+  },
+  {
+    theme: 'Party Supplies',
+    spangram: 'PARTYSHOP',
+    words: ['BALLOON', 'PINATA', 'CONFETTI', 'CANDLE', 'NAPKIN', 'BANNER']
+  },
+  {
+    theme: 'Wedding Words',
+    spangram: 'WEDDINGDAY',
+    words: ['BRIDE', 'GROOM', 'VOWS', 'RING', 'VEIL', 'ALTAR', 'TOAST', 'CHAPEL']
+  },
+  {
+    theme: 'Halloween',
+    spangram: 'TRICKORTREAT',
+    words: ['GHOST', 'WITCH', 'PUMPKIN', 'COSTUME', 'SKELETON', 'BATS']
+  },
+  {
+    theme: 'Christmas',
+    spangram: 'YULETIDE',
+    words: ['SANTA', 'REINDEER', 'STOCKING', 'PRESENT', 'SLEIGH', 'WREATH']
+  },
+  {
+    theme: 'Spring',
+    spangram: 'SPRINGTIME',
+    words: ['BLOSSOM', 'TULIP', 'RAIN', 'BUNNY', 'ROBIN', 'DAFFODIL', 'LAMB']
+  },
+  {
+    theme: 'Fishing Gear',
+    spangram: 'TACKLEBOX',
+    words: ['HOOK', 'REEL', 'LURE', 'BOBBER', 'SINKER', 'WADERS', 'BAIT', 'CREEL']
+  },
+  {
+    theme: 'Sailing Terms',
+    spangram: 'NAUTICAL',
+    words: ['ANCHOR', 'MAST', 'HULL', 'KEEL', 'STARBOARD', 'RUDDER', 'LEEWARD']
+  },
+  {
+    theme: 'Airport Words',
+    spangram: 'AIRTRAVEL',
+    words: ['GATE', 'RUNWAY', 'TICKET', 'BOARDING', 'PASSPORT', 'LUGGAGE']
+  },
+  {
+    theme: 'Train Words',
+    spangram: 'RAILROAD',
+    words: ['CABOOSE', 'ENGINE', 'TRACK', 'STATION', 'PLATFORM', 'WHISTLE']
+  },
+  {
+    theme: 'Car Parts',
+    spangram: 'UNDERTHEHOOD',
+    words: ['BRAKES', 'BUMPER', 'MUFFLER', 'RADIATOR', 'AXLE', 'TIRES']
+  },
+  {
+    theme: 'Bicycle Parts',
+    spangram: 'TWOWHEELER',
+    words: ['PEDAL', 'CHAIN', 'SADDLE', 'SPOKE', 'HANDLEBAR', 'SPROCKET']
+  },
+  {
+    theme: 'Hardware Store',
+    spangram: 'HOMEREPAIR',
+    words: ['HAMMER', 'NAILS', 'SCREWS', 'WRENCH', 'PLIERS', 'DRILL', 'NUTS']
+  },
+  {
+    theme: 'Sewing Supplies',
+    spangram: 'SEWINGKIT',
+    words: ['NEEDLE', 'THREAD', 'THIMBLE', 'BOBBIN', 'BUTTON', 'SCISSORS']
+  },
+  {
+    theme: 'Fabrics',
+    spangram: 'TEXTILES',
+    words: ['COTTON', 'SILK', 'LINEN', 'DENIM', 'VELVET', 'WOOL', 'SATIN', 'TWEED']
+  },
+  {
+    theme: 'Patterns',
+    spangram: 'PATTERNED',
+    words: ['PLAID', 'STRIPES', 'POLKADOT', 'PAISLEY', 'FLORAL', 'ARGYLE']
+  },
+  {
+    theme: 'Jewelry',
+    spangram: 'ADORNMENTS',
+    words: ['NECKLACE', 'BRACELET', 'EARRING', 'PENDANT', 'CUFFLINK']
+  },
+  {
+    theme: 'Hairstyles',
+    spangram: 'HAIRDOS',
+    words: ['BRAID', 'PONYTAIL', 'MOHAWK', 'MULLET', 'PIXIE', 'AFRO', 'BEEHIVE']
+  },
+  {
+    theme: 'Makeup',
+    spangram: 'COSMETICS',
+    words: ['LIPSTICK', 'MASCARA', 'BLUSH', 'EYELINER', 'POWDER', 'GLOSS']
+  },
+  {
+    theme: 'Bathroom Items',
+    spangram: 'WASHROOM',
+    words: ['TOWEL', 'SOAP', 'TOOTHBRUSH', 'SHAMPOO', 'PLUNGER', 'BATHTUB']
+  },
+  {
+    theme: 'Bedroom Items',
+    spangram: 'BEDCHAMBER',
+    words: ['PILLOW', 'BLANKET', 'DRESSER', 'MATTRESS', 'CLOSET', 'LAMP']
+  },
+  {
+    theme: 'Houseplants',
+    spangram: 'GREENERY',
+    words: ['FERN', 'CACTUS', 'ALOE', 'POTHOS', 'ORCHID', 'MONSTERA', 'BAMBOO']
+  },
+  {
+    theme: 'Spreads',
+    spangram: 'ONTOAST',
+    words: ['BUTTER', 'HONEY', 'HUMMUS', 'MARMALADE', 'TAPENADE', 'CHUTNEY']
+  },
+  {
+    theme: 'Sauces',
+    spangram: 'CONDIMENTS',
+    words: ['KETCHUP', 'MUSTARD', 'SALSA', 'PESTO', 'TARTAR', 'TERIYAKI']
+  },
+  {
+    theme: 'Candy',
+    spangram: 'SWEETSHOP',
+    words: ['LOLLIPOP', 'TOFFEE', 'FUDGE', 'GUMDROP', 'CARAMEL', 'NOUGAT']
+  },
+  {
+    theme: 'Pies',
+    spangram: 'PIEFLAVORS',
+    words: ['APPLE', 'PECAN', 'PUMPKIN', 'PEACH', 'RHUBARB', 'BLUEBERRY']
+  },
+  {
+    theme: 'Snacks',
+    spangram: 'MUNCHIES',
+    words: ['PRETZEL', 'POPCORN', 'PEANUTS', 'CRACKERS', 'NACHOS', 'JERKY']
+  },
+  {
+    theme: 'Mexican Food',
+    spangram: 'MEXICANEATS',
+    words: ['TACO', 'BURRITO', 'TAMALE', 'ENCHILADA', 'CHURRO', 'SALSA']
+  },
+  {
+    theme: 'Italian Food',
+    spangram: 'TRATTORIA',
+    words: ['LASAGNA', 'RISOTTO', 'GNOCCHI', 'TIRAMISU', 'PIZZA', 'PESTO']
+  },
+  {
+    theme: 'Indian Food',
+    spangram: 'CURRYHOUSE',
+    words: ['SAMOSA', 'NAAN', 'BIRYANI', 'TANDOORI', 'PAKORA', 'CHUTNEY']
+  },
+  {
+    theme: 'Noodles',
+    spangram: 'NOODLEHOUSE',
+    words: ['UDON', 'SOBA', 'RAMEN', 'SPAGHETTI', 'LAKSA', 'VERMICELLI']
+  },
+  {
+    theme: 'Cooking Methods',
+    spangram: 'HOWTOCOOK',
+    words: ['SIMMER', 'BRAISE', 'POACH', 'GRILL', 'ROAST', 'STEAM', 'STIRFRY']
+  },
+  {
+    theme: 'Restaurant Words',
+    spangram: 'DININGOUT',
+    words: ['MENU', 'WAITER', 'ENTREE', 'APPETIZER', 'CHECK', 'BOOTH', 'CHEF']
+  },
+  {
+    theme: 'Singing Voices',
+    spangram: 'VOCALRANGES',
+    words: ['SOPRANO', 'ALTO', 'TENOR', 'BASS', 'BARITONE', 'CONTRALTO']
+  },
+  {
+    theme: 'Theater Words',
+    spangram: 'SHOWBUSINESS',
+    words: ['SCRIPT', 'USHER', 'ENCORE', 'MATINEE', 'CURTAIN', 'ACTOR']
+  },
+  {
+    theme: 'Poetry Forms',
+    spangram: 'POETICFORMS',
+    words: ['HAIKU', 'SONNET', 'LIMERICK', 'BALLAD', 'ACROSTIC', 'EPIC']
+  },
+  {
+    theme: 'Punctuation',
+    spangram: 'SENTENCEMARKS',
+    words: ['COMMA', 'PERIOD', 'COLON', 'HYPHEN', 'SEMICOLON', 'DASH']
+  },
+  {
+    theme: 'Grammar',
+    spangram: 'SPEECHPARTS',
+    words: ['NOUN', 'VERB', 'ADJECTIVE', 'ADVERB', 'PRONOUN', 'ARTICLE']
+  },
+  {
+    theme: 'Library Words',
+    spangram: 'READINGROOM',
+    words: ['CATALOG', 'FICTION', 'ARCHIVE', 'OVERDUE', 'LIBRARIAN']
+  },
+  {
+    theme: 'Mystery Words',
+    spangram: 'WHODUNIT',
+    words: ['SUSPECT', 'DETECTIVE', 'MOTIVE', 'ALIBI', 'SLEUTH', 'WITNESS']
+  },
+  {
+    theme: 'Pirates',
+    spangram: 'BUCCANEERS',
+    words: ['CUTLASS', 'MAST', 'PARROT', 'TREASURE', 'CAPTAIN', 'ANCHOR']
+  },
+  {
+    theme: 'Castle Parts',
+    spangram: 'STRONGHOLD',
+    words: ['MOAT', 'TURRET', 'KEEP', 'DUNGEON', 'RAMPART', 'DRAWBRIDGE']
+  },
+  {
+    theme: 'Superpowers',
+    spangram: 'SUPERHUMAN',
+    words: ['FLIGHT', 'STRENGTH', 'TELEPATHY', 'HEALING', 'TELEPORT']
+  },
+  {
+    theme: 'Months',
+    spangram: 'CALENDAR',
+    words: ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'OCTOBER', 'JUNE', 'JULY']
+  },
+  {
+    theme: 'Time Words',
+    spangram: 'UNITSOFTIME',
+    words: ['SECOND', 'MINUTE', 'HOUR', 'DECADE', 'CENTURY', 'WEEK', 'YEAR']
+  },
+  {
+    theme: 'Water Sports',
+    spangram: 'ONTHEWATER',
+    words: ['SURFING', 'ROWING', 'SAILING', 'KAYAKING', 'SNORKELING']
+  },
+  {
+    theme: 'Bakery Tools',
+    spangram: 'BAKINGGEAR',
+    words: ['WHISK', 'SPATULA', 'SIFTER', 'MIXER', 'OVEN', 'SCRAPER', 'TRAY']
+  },
+  {
+    theme: 'Geometry Solids',
+    spangram: 'SOLIDFIGURES',
+    words: ['SPHERE', 'CONE', 'CYLINDER', 'PYRAMID', 'PRISM', 'CUBOID']
+  },
+  {
+    theme: 'Weather Gear',
+    spangram: 'RAINORSHINE',
+    words: ['UMBRELLA', 'PONCHO', 'GALOSHES', 'PARKA', 'SCARF', 'BOOTS']
   }
 ];
 
-// Generate puzzles with boards
-export const puzzles: StrandsGame[] = puzzleThemes.map((theme, index) => {
-  const id = index + 1;
-  const date = new Date(2025, 3, id).toISOString().split('T')[0]; // April 2025
-  
-  return {
-    id,
-    date,
-    theme: theme.theme,
-    board: generateBoard(theme.words),
-    bonusWord: theme.bonusWord
-  };
-});
+// Boards are built on first use and kept, so a reset gets the same untouched board back
+const boards = new Map<number, StrandsGame>();
 
-// Function to get today's puzzle or a specific puzzle by ID
-export function getPuzzle(puzzleId?: number): StrandsGame {
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  
-  if (puzzleId) {
-    return puzzles.find(puzzle => puzzle.id === puzzleId) || puzzles[0];
+export function getPuzzle(id: number): StrandsGame {
+  let puzzle = boards.get(id);
+  if (!puzzle) {
+    const { theme, spangram, words } = puzzleThemes[id - 1];
+    puzzle = { id, theme, spangram, board: generateBoard(spangram, words) };
+    boards.set(id, puzzle);
   }
-  
-  return puzzles.find(puzzle => puzzle.date === dateStr) || puzzles[0];
+  return puzzle;
 }
 
-// Function to get a random puzzle
 export function getRandomPuzzle(): StrandsGame {
-  const randomIndex = Math.floor(Math.random() * puzzles.length);
-  return puzzles[randomIndex];
+  return getPuzzle(1 + Math.floor(Math.random() * puzzleThemes.length));
 }

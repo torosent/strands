@@ -1,8 +1,7 @@
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* dark: follows the .dark class set by ThemeContext, not the OS setting */
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #f8f9fa;
