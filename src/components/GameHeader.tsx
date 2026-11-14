@@ -5,17 +5,14 @@ import { useGame } from '@/context/GameContext';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function GameHeader() {
-  const { puzzle, gameState } = useGame();
+  const { puzzle, foundCount } = useGame();
   const { theme, toggleTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const infoButtonRef = useRef<HTMLButtonElement>(null);
   
   // Use useEffect to handle client-side only code
   useEffect(() => {
-    setMounted(true);
-
     // Add click outside listener to close tooltip
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -35,38 +32,12 @@ export default function GameHeader() {
   }, []);
   
   const totalWords = puzzle.board.words.length;
-  const foundWords = gameState.foundWords.length;
-  const progress = totalWords > 0 ? (foundWords / totalWords) * 100 : 0;
+  const progress = totalWords > 0 ? (foundCount / totalWords) * 100 : 0;
 
   // Toggle tooltip visibility
   const toggleTooltip = () => {
     setShowTooltip(!showTooltip);
   };
-
-  // If not mounted yet, use a pre-rendered version that won't change on client
-  if (!mounted) {
-    return (
-      <div className="flex flex-col items-center mb-4 text-center">
-        <div className="flex justify-between items-center w-full mb-4">
-          <h1 className="text-2xl md:text-3xl font-bold">Strands</h1>
-          <div className="flex">
-            <div className="w-6 h-6 mr-2"></div> {/* Placeholder for info button */}
-            <div className="w-6 h-6"></div> {/* Placeholder for theme toggle */}
-          </div>
-        </div>
-        
-        <div className="mb-2">
-          <p className="text-sm text-gray-600">
-            Loading puzzle...
-          </p>
-        </div>
-        
-        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-          <div className="h-2.5 rounded-full"></div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center mb-6 text-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
@@ -118,13 +89,15 @@ export default function GameHeader() {
               ref={tooltipRef}
               className="absolute right-0 top-14 z-50 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-lg border border-gray-200 dark:border-gray-700 w-64 text-left animate-fade-in"
             >
-              <h3 className="text-md font-semibold mb-2 text-gray-900 dark:text-white">How to Play</h3>
+              <h3 className="text-base font-semibold mb-2 text-gray-900 dark:text-white">How to Play</h3>
               <ul className="text-sm text-gray-700 dark:text-gray-300 space-y-2 list-disc list-inside">
-                <li>Drag or tap letters to create words</li>
-                <li>If tapping, double tap the last letter to submit</li>
-                <li>Theme words fill the board entirely</li>
+                <li>Find theme words to fill the board</li>
+                <li>Drag or tap letters to make words; letters can connect in any direction</li>
+                <li>If tapping, tap the last letter again to submit</li>
                 <li>Theme words stay highlighted in blue when found</li>
-                <li>No theme words overlap</li>
+                <li>Theme words fill the board entirely; no theme words overlap</li>
+                <li>The spangram describes the theme and touches two opposite sides of the board. It turns yellow when found</li>
+                <li>Every 3 non-theme words (4+ letters) earn a hint. A hint outlines a theme word; a second hint shows its letter order</li>
               </ul>
             </div>
           )}
@@ -138,7 +111,7 @@ export default function GameHeader() {
       </div>
       
       <div className="mb-4">
-        <p className="text-md font-semibold text-gray-900 dark:text-white">
+        <p className="text-base font-semibold text-gray-900 dark:text-white">
           Find theme words to fill the board
         </p>
       </div>
@@ -158,7 +131,7 @@ export default function GameHeader() {
       </div>
       
       <div className="text-base font-bold text-gray-900 dark:text-gray-300">
-        {`${foundWords} of ${totalWords} words found`}
+        {`${foundCount} of ${totalWords} theme words found`}
       </div>
     </div>
   );

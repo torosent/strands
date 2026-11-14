@@ -1,287 +1,143 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useGame } from '@/context/GameContext';
 import { Cell as CellType } from '@/types/game';
+import { ROWS, COLS, sameCell } from '@/data/board';
 
-// Define color palette for revealed words
-const WORD_COLORS = [
-  'bg-red-500',      // 0
-  'bg-blue-600',     // 1
-  'bg-green-600',    // 2
-  'bg-yellow-500',   // 3
-  'bg-purple-500',   // 4
-  'bg-pink-500',     // 5
-  'bg-indigo-600',   // 6
-  'bg-teal-500',     // 7
-];
+// NYT colors: theme words blue, spangram yellow, current selection grey
+const LOOKS = {
+  selected: 'bg-slate-300 text-gray-900 dark:bg-slate-500 dark:text-white',
+  word: 'bg-sky-300 text-gray-900 dark:bg-sky-600 dark:text-white',
+  spangram: 'bg-yellow-300 text-gray-900 dark:bg-yellow-500',
+  hinted: 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-2 border-dashed border-sky-500',
+  plain: 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white',
+};
+const LINE_COLORS = {
+  selected: 'stroke-slate-300 dark:stroke-slate-500',
+  word: 'stroke-sky-300 dark:stroke-sky-600',
+  spangram: 'stroke-yellow-300 dark:stroke-yellow-500',
+  hintOrder: 'stroke-sky-500',
+};
 
-// Cell component for individual letters
-const Cell = ({ cell }: { cell: CellType }) => {
-  const { startSelection, moveSelection, isCellSelectable, puzzle, gameState } = useGame();
-  const isSelectable = isCellSelectable(cell);
-  const cellRef = useRef<HTMLDivElement>(null);
-  
-  // Check if this cell is hinted
-  const isHinted = gameState.hintedCells.some(
-    hc => hc.row === cell.row && hc.col === cell.col
-  );
-  
-  // Get the color for this cell based on which word it belongs to
-  const getCellColor = () => {
-    if (!cell.isFound) return 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-transparent';
-    
-    // Find which word this cell belongs to
-    const wordForCell = puzzle.board.words.find(word => 
-      word.isFound && word.cells.some(c => c.row === cell.row && c.col === cell.col)
-    );
-    
-    if (wordForCell && wordForCell.colorIndex !== undefined) {
-      return WORD_COLORS[wordForCell.colorIndex % WORD_COLORS.length];
-    }
-    
-    // Default blue color if no colorIndex is set
-    return 'bg-blue-600 dark:bg-blue-600';
-  };
+type Look = keyof typeof LOOKS;
 
-  // Register this cell's ref with parent
-  useEffect(() => {
-    if (cellRef.current) {
-      cellRef.current.dataset.row = cell.row.toString();
-      cellRef.current.dataset.col = cell.col.toString();
-    }
-  }, [cell.row, cell.col]);
-
-  return (
-    <div 
-      ref={cellRef}
-      data-row={cell.row}
-      data-col={cell.col}
-      className={`
-        relative flex items-center justify-center w-full h-full aspect-square
-        cursor-pointer select-none transition-all
-        ${cell.isFound ? 'text-white' : 'text-gray-900 dark:text-white'}
-        ${cell.isSelected ? 'scale-110 z-10' : ''}
-      `}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!cell.isFound) startSelection(cell);
-      }}
-      onPointerEnter={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isSelectable) moveSelection(cell);
-      }}
-      onTouchStart={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (!cell.isFound) startSelection(cell);
-      }}
-    >
-      <div 
-        className={`
-          flex items-center justify-center w-full h-full rounded-full
-          font-bold text-lg sm:text-xl transition-all shadow-sm pointer-events-none
-          ${cell.isSelected ? 'bg-yellow-400 text-gray-900 dark:bg-yellow-500' : ''}
-          ${cell.isFound ? getCellColor() : 'bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-transparent'}
-          ${isHinted && !cell.isFound ? 'border-4 border-yellow-500 dark:border-yellow-400' : ''}
-        `}
-      >
-        {cell.letter}
-      </div>
+const Cell = ({ cell, look }: { cell: CellType; look: Look }) => (
+  <div
+    data-row={cell.row}
+    data-col={cell.col}
+    className={`relative z-10 flex items-center justify-center aspect-square cursor-pointer select-none ${look === 'selected' ? 'scale-110' : ''} transition-transform`}
+  >
+    <div className={`flex items-center justify-center w-full h-full rounded-full font-bold text-lg sm:text-xl pointer-events-none transition-colors ${LOOKS[look]}`}>
+      {cell.letter}
     </div>
+  </div>
+);
+
+// Line through cells, drawn in grid units (1 unit = 1 cell) so nothing needs measuring
+const Strand = ({ cells, className, dashed }: { cells: CellType[]; className: string; dashed?: boolean }) =>
+  cells.length < 2 ? null : (
+    <polyline
+      points={cells.map(c => `${c.col + 0.5},${c.row + 0.5}`).join(' ')}
+      fill="none"
+      strokeWidth={dashed ? 3 : 10}
+      strokeDasharray={dashed ? '6 6' : undefined}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      vectorEffect="non-scaling-stroke"
+      className={className}
+    />
   );
-};
-
-// Line component to draw paths between selected cells
-const SelectionPath = ({ selectedCells }: { selectedCells: CellType[] }) => {
-  const [paths, setPaths] = useState<string[]>([]);
-  const boardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (selectedCells.length < 2 || !boardRef.current) return;
-
-    const paths: string[] = [];
-    const cellWidth = boardRef.current.offsetWidth / 8;
-    const cellHeight = boardRef.current.offsetHeight / 6;
-
-    for (let i = 0; i < selectedCells.length - 1; i++) {
-      const from = selectedCells[i];
-      const to = selectedCells[i + 1];
-
-      // Calculate centers of the cells
-      const fromX = (from.col + 0.5) * cellWidth;
-      const fromY = (from.row + 0.5) * cellHeight;
-      const toX = (to.col + 0.5) * cellWidth;
-      const toY = (to.row + 0.5) * cellHeight;
-
-      paths.push(`M${fromX},${fromY} L${toX},${toY}`);
-    }
-
-    setPaths(paths);
-  }, [selectedCells]);
-
-  if (selectedCells.length < 2) return null;
-
-  return (
-    <svg 
-      className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none" 
-      style={{ position: 'absolute' }}
-    >
-      {/* Thicker background path for better visibility */}
-      {paths.map((path, index) => (
-        <path
-          key={`bg-${index}`}
-          d={path}
-          stroke="rgba(234, 179, 8, 0.3)"
-          strokeWidth="16"
-          fill="none"
-          strokeLinecap="round"
-          className="dark:stroke-yellow-600/30"
-        />
-      ))}
-      
-      {/* Main selection path */}
-      {paths.map((path, index) => (
-        <path
-          key={index}
-          d={path}
-          stroke="rgba(234, 179, 8, 0.8)"
-          strokeWidth="10"
-          fill="none"
-          strokeLinecap="round"
-          className="dark:stroke-yellow-600"
-        />
-      ))}
-      
-      {/* Direction indicators on path to help with diagonal selection */}
-      {selectedCells.length > 1 && selectedCells.slice(1).map((cell, index) => {
-        const prevCell = selectedCells[index];
-        const cellWidth = boardRef.current ? boardRef.current.offsetWidth / 8 : 0;
-        const cellHeight = boardRef.current ? boardRef.current.offsetHeight / 6 : 0;
-        
-        const x = ((prevCell.col + cell.col) / 2 + 0.5) * cellWidth;
-        const y = ((prevCell.row + cell.row) / 2 + 0.5) * cellHeight;
-        
-        return (
-          <circle
-            key={`indicator-${index}`}
-            cx={x}
-            cy={y}
-            r={5}
-            fill="white"
-            stroke="rgba(234, 179, 8, 1)"
-            strokeWidth={2}
-            className="opacity-80"
-          />
-        );
-      })}
-    </svg>
-  );
-};
 
 export default function Board() {
-  const { puzzle, gameState, endSelection, moveSelection } = useGame();
-  const boardRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
+  const { puzzle, gameState, currentWord, pressCell, moveSelection, submit } = useGame();
+  // Set while a finger or mouse button is down; `moved` tells a drag from a tap
+  const press = useRef<{ start: CellType; moved: boolean } | null>(null);
 
-  // Set mounted state when component mounts on client
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Handle touch move at the board level for better mobile support
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const touch = e.touches[0];
-    if (!touch || !boardRef.current) return;
-
-    // Find which cell the touch is over
-    const elements = document.elementsFromPoint(touch.clientX, touch.clientY);
-    const cellElement = elements.find(el => 
-      el.hasAttribute('data-row') && el.hasAttribute('data-col')
-    ) as HTMLElement;
-
-    if (cellElement) {
-      const row = parseInt(cellElement.dataset.row || '0', 10);
-      const col = parseInt(cellElement.dataset.col || '0', 10);
-      const cell = puzzle.board.cells[row]?.[col];
-      
-      if (cell && !cell.isFound) {
-        moveSelection(cell);
-      }
+  // Cell under the pointer. `strict` counts only the middle of the circle,
+  // so a diagonal drag does not clip the neighbouring cells on the way.
+  const cellAt = (e: React.PointerEvent, strict: boolean) => {
+    const el = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('[data-row]');
+    if (!el) return undefined;
+    if (strict) {
+      const r = el.getBoundingClientRect();
+      const dist = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+      if (dist > r.width * 0.4) return undefined;
     }
+    return puzzle.board.cells[Number(el.dataset.row)]?.[Number(el.dataset.col)];
   };
 
-  // Handle pointer up to end selection
+  // Releasing after a drag submits the word; after a tap the selection stays for more taps.
+  // A cancelled press (e.g. the browser took over the touch) just ends the press.
   useEffect(() => {
-    const handlePointerUp = () => {
-      if (gameState.selectedCells.length > 0) {
-        endSelection();
-      }
+    const onUp = () => {
+      if (press.current?.moved) submit();
+      press.current = null;
     };
-
-    const handleTouchEnd = () => {
-      if (gameState.selectedCells.length > 0) {
-        endSelection();
-      }
-    };
-
-    document.addEventListener('pointerup', handlePointerUp);
-    document.addEventListener('touchend', handleTouchEnd);
+    const onCancel = () => { press.current = null; };
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onCancel);
     return () => {
-      document.removeEventListener('pointerup', handlePointerUp);
-      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onCancel);
     };
-  }, [gameState.selectedCells, endSelection]);
+  }, [submit]);
 
-  // Return a simplified, stable version for server rendering
-  if (!mounted) {
-    return (
-      <div className="relative w-full max-w-md mx-auto aspect-[4/3] touch-none bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-        <div className="grid grid-rows-6 grid-cols-8 w-full h-full gap-1.5">
-          {Array(6).fill(0).map((_, rowIndex) => (
-            Array(8).fill(0).map((_, colIndex) => (
-              <div key={`${rowIndex}-${colIndex}`} className="relative flex items-center justify-center w-full h-full aspect-square">
-                <div className="flex items-center justify-center w-full h-full rounded-full font-bold text-lg sm:text-xl bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-transparent">
-                  {" "}
-                </div>
-              </div>
-            ))
+  const isSelected = (cell: CellType) => gameState.selectedCells.some(c => sameCell(c, cell));
+  const hintWord = puzzle.board.words.find(w => w.id === gameState.hintWordId && !w.isFound);
+  const foundWordOf = (cell: CellType) =>
+    puzzle.board.words.find(w => w.isFound && w.cells.some(c => sameCell(c, cell)));
+  const lookOf = (cell: CellType): Look => {
+    if (isSelected(cell)) return 'selected';
+    if (cell.isFound) return foundWordOf(cell)?.isSpangram ? 'spangram' : 'word';
+    if (hintWord?.cells.some(c => sameCell(c, cell))) return 'hinted';
+    return 'plain';
+  };
+
+  return (
+    <div
+      className="relative w-full max-w-sm mx-auto bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
+      style={{ touchAction: 'none' }}
+      onPointerDown={(e) => {
+        const cell = cellAt(e, false);
+        if (!cell || cell.isFound) return;
+        e.preventDefault();
+        press.current = { start: cell, moved: false };
+        pressCell(cell);
+      }}
+      onPointerMove={(e) => {
+        if (!press.current) return;
+        // No button down: the release happened where we couldn't see it (e.g. outside the window)
+        if (e.buttons === 0) { press.current = null; return; }
+        const cell = cellAt(e, true);
+        if (!cell) return;
+        // Wobbling on the first letter is still a tap; once moved, going back onto it steps back
+        if (!sameCell(cell, press.current.start)) press.current.moved = true;
+        if (press.current.moved) moveSelection(cell);
+      }}
+    >
+      <div className="relative">
+        <svg viewBox={`0 0 ${COLS} ${ROWS}`} className="absolute inset-0 w-full h-full pointer-events-none">
+          {puzzle.board.words.filter(w => w.isFound).map(w => (
+            <Strand key={w.id} cells={w.cells} className={w.isSpangram ? LINE_COLORS.spangram : LINE_COLORS.word} />
+          ))}
+          {hintWord && gameState.hintShowsOrder && (
+            <Strand cells={hintWord.cells} className={LINE_COLORS.hintOrder} dashed />
+          )}
+          <Strand cells={gameState.selectedCells} className={LINE_COLORS.selected} />
+        </svg>
+
+        <div className="grid grid-cols-6 gap-1.5">
+          {puzzle.board.cells.flat().map(cell => (
+            <Cell key={`${cell.row}-${cell.col}`} cell={cell} look={lookOf(cell)} />
           ))}
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div 
-    className="relative w-full max-w-md mx-auto aspect-[4/3] bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
-    style={{ touchAction: 'none' }}
-    ref={boardRef}
-    onTouchMove={handleTouchMove}
-    >
-      {/* Selection path overlay */}
-      <SelectionPath selectedCells={gameState.selectedCells} />
-
-      {/* Board grid */}
-      <div className="grid grid-rows-6 grid-cols-8 w-full gap-1.5 min-h-0"> 
-        {puzzle.board.cells.map((row, rowIndex) => (
-          row.map((cell, colIndex) => (
-            <Cell 
-              key={`${rowIndex}-${colIndex}`} 
-              cell={cell} 
-            />
-          ))
-        ))}
-      </div>
-
-      {/* Current word display */}
-      {gameState.currentWord && (
+      {/* Current word, or feedback on the last try */}
+      {(currentWord || gameState.message) && (
         <div className="absolute -bottom-10 left-0 w-full text-center font-bold text-xl text-gray-900 dark:text-white bg-white dark:bg-gray-800 py-2 rounded-md shadow-sm border border-gray-200 dark:border-transparent">
-          {gameState.currentWord}
+          {currentWord || gameState.message}
         </div>
       )}
     </div>

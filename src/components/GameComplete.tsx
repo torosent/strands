@@ -31,7 +31,9 @@ const Fireworks = () => {
           '--color': firework.color,
           opacity: 1
         } as React.CSSProperties}
-        onAnimationEnd={() => {
+        onAnimationEnd={(e) => {
+          // Particles' animationend bubbles up here too; only the firework's own end removes it
+          if (e.target !== e.currentTarget) return;
           setFireworks(prev => prev.filter(fw => 
             React.isValidElement(fw) && fw.key !== firework.id.toString()
           ));
@@ -86,8 +88,7 @@ export default function GameComplete() {
   }, []);
   
   // Calculate time taken
-  const startTime = gameState.startTime || new Date();
-  const endTime = gameState.endTime || new Date();
+  const { startTime, endTime = startTime } = gameState;
   const timeTaken = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
   const minutes = Math.floor(timeTaken / 60);
   const seconds = timeTaken % 60;
@@ -95,16 +96,16 @@ export default function GameComplete() {
   const totalWords = puzzle.board.words.length;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 p-4">
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 p-4">
       {showFireworks && <Fireworks />}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-lg animate-fade-in border border-gray-200 dark:border-gray-700">
         <h2 className="text-2xl font-bold text-center mb-4 text-gray-900 dark:text-white">
-          Puzzle Complete!
+          {gameState.hintsUsed === 0 ? 'Perfect!' : gameState.hintsUsed === 1 ? 'Great!' : 'Well done!'}
         </h2>
         
         <div className="mb-6">
           <p className="text-center mb-2 text-gray-700 dark:text-gray-300">
-            You found all {totalWords} words with the theme:
+            You found all {totalWords} theme words for:
           </p>
           <p className="text-xl font-bold text-center mb-4 text-blue-700 dark:text-blue-400">
             {puzzle.theme}
@@ -112,7 +113,7 @@ export default function GameComplete() {
           
           <div className="bg-blue-50 dark:bg-blue-900 p-4 rounded-md mb-4 border border-blue-200 dark:border-blue-800">
             <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-              Bonus word: <span className="font-bold">{puzzle.bonusWord}</span>
+              Spangram: <span className="font-bold">{puzzle.spangram}</span>
             </p>
           </div>
 
@@ -123,8 +124,8 @@ export default function GameComplete() {
             </div>
             
             <div className="flex justify-between text-gray-700 dark:text-gray-300">
-              <span className="font-medium">Used hint:</span>
-              <span className="font-bold">{gameState.usedHint ? 'Yes' : 'No'}</span>
+              <span className="font-medium">Hints used:</span>
+              <span className="font-bold">{gameState.hintsUsed}</span>
             </div>
           </div>
         </div>

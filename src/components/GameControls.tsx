@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { useGame } from '@/context/GameContext';
+import { useGame, WORDS_PER_HINT } from '@/context/GameContext';
 
 export default function GameControls() {
-  const { gameState, clearSelection, resetGame, loadPuzzle, revealAnswers, useHint } = useGame();
+  const { gameState, clearSelection, resetGame, loadPuzzle, revealAnswers, giveHint, hintsLeft, hintProgress, canHint } = useGame();
 
   return (
     <div className="flex flex-col gap-4">
@@ -34,10 +34,16 @@ export default function GameControls() {
         
         {!gameState.isComplete && !gameState.answersRevealed && (
           <button
-            onClick={useHint}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md font-medium shadow-sm dark:bg-yellow-600 dark:hover:bg-yellow-700"
+            onClick={giveHint}
+            disabled={!canHint}
+            aria-label={hintsLeft > 0 ? `Hint, ${hintsLeft} available` : `Hint: ${hintProgress} of ${WORDS_PER_HINT} non-theme words found`}
+            className="relative overflow-hidden bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-200 disabled:text-yellow-900 disabled:hover:bg-gray-200 disabled:cursor-not-allowed dark:disabled:bg-gray-700 dark:disabled:text-yellow-100 text-white px-4 py-2 rounded-md font-medium shadow-sm dark:bg-yellow-600 dark:hover:bg-yellow-700"
           >
-            Hint
+            {/* Fills up with non-theme words: every WORDS_PER_HINT earn a hint */}
+            {hintsLeft <= 0 && (
+              <span className="absolute inset-y-0 left-0 bg-yellow-300/60 dark:bg-yellow-600/50" style={{ width: `${(hintProgress / WORDS_PER_HINT) * 100}%` }} />
+            )}
+            <span className="relative">{hintsLeft > 1 ? `Hint (${hintsLeft})` : 'Hint'}</span>
           </button>
         )}
         
