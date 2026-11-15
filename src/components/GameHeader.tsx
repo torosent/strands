@@ -97,7 +97,7 @@ export default function GameHeader() {
                 <li>Theme words stay highlighted in blue when found</li>
                 <li>Theme words fill the board entirely; no theme words overlap</li>
                 <li>The spangram describes the theme and touches two opposite sides of the board. It turns yellow when found</li>
-                <li>Every 3 non-theme words (4+ letters) earn a hint. A hint outlines a theme word; a second hint shows its letter order</li>
+                <li>Stuck? A hint outlines a theme word; a second hint shows its letter order</li>
               </ul>
             </div>
           )}

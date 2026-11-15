@@ -14,7 +14,7 @@ The rules follow the NYT game:
 - Letters connect in any direction, so words can bend
 - Theme words turn blue when found
 - The spangram describes the theme, touches two opposite sides of the board, and turns yellow
-- Every 3 non-theme words (4+ letters, from an English word list) earn a hint. A hint outlines a theme word; a second hint shows its letter order
+- Hints are free (NYT makes you earn them). A hint outlines a theme word; a second hint shows its letter order
 - Finish without hints for a "Perfect!"
 
 Boards are generated at random, so a puzzle can have more than one valid solution. A theme word counts on any path that still lets the remaining words fill the board.

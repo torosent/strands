@@ -27,7 +27,7 @@ export interface StrandsGame {
 
 export interface GameState {
   selectedCells: Cell[];
-  nonThemeWords: string[];  // every 3 earn a hint
+  nonThemeWords: string[];  // valid words that aren't theme words
   hintsUsed: number;
   hintWordId?: number;  // theme word whose letters a hint is showing
   hintShowsOrder: boolean;  // second hint on the same word: show its letter order

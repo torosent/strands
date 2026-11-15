@@ -8,16 +8,13 @@ import { matchThemeWord, sameCell } from '@/data/board';
 
 // NYT Strands rules
 const MIN_WORD_LENGTH = 4;
-export const WORDS_PER_HINT = 3;
 
 type GameContextType = {
   puzzle: StrandsGame;
   gameState: GameState;
   currentWord: string;
   foundCount: number;
-  hintsLeft: number;
-  hintProgress: number;  // non-theme words toward the next hint, 0..WORDS_PER_HINT-1
-  canHint: boolean;  // a hint is earned and would show something new
+  canHint: boolean;  // a hint would show something new
   pressCell: (cell: Cell) => void;
   moveSelection: (cell: Cell) => void;
   submit: () => void;
@@ -59,11 +56,9 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [gameState, setGameState] = useState<GameState>(newGameState);
   const currentWord = gameState.selectedCells.map(c => c.letter).join('');
   const foundCount = puzzle.board.words.filter(w => w.isFound).length;
-  const hintsLeft = Math.floor(gameState.nonThemeWords.length / WORDS_PER_HINT) - gameState.hintsUsed;
-  const hintProgress = gameState.nonThemeWords.length % WORDS_PER_HINT;
   const activeHint = puzzle.board.words.find(w => w.id === gameState.hintWordId && !w.isFound);
   const nextHintWord = puzzle.board.words.find(w => !w.isFound && !w.isSpangram);
-  const canHint = hintsLeft > 0 && (activeHint ? !gameState.hintShowsOrder : !!nextHintWord);
+  const canHint = activeHint ? !gameState.hintShowsOrder : !!nextHintWord;
 
   // Load the word list once the page is idle, so the first non-theme word is checked
   // without delay but the big parse doesn't compete with the first touches.
@@ -170,8 +165,9 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   // A hint outlines the letters of a theme word (never the spangram).
   // A second hint while that word is still showing reveals its letter order.
+  // Nothing new to show: say why, so the button does not seem broken
   const giveHint = () => {
-    if (!canHint) return;
+    if (!canHint) return endTry(activeHint ? 'The hint already shows that word' : 'Only the spangram is left');
     if (activeHint) {
       setGameState(prev => ({ ...prev, hintsUsed: prev.hintsUsed + 1, hintShowsOrder: true }));
     } else if (nextHintWord) {
@@ -214,8 +210,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       gameState,
       currentWord,
       foundCount,
-      hintsLeft,
-      hintProgress,
       canHint,
       pressCell,
       moveSelection,

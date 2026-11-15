@@ -1,4 +1,4 @@
-// English words for non-theme words (NYT counts words of 4+ letters toward hints).
+// English words, to tell a real non-theme word from a typo.
 // The list is about 3 MB, so it loads on demand into its own chunk.
 let dictionary: Promise<Set<string>> | undefined;
 
