@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { puzzleThemes, getPuzzle } from './puzzles.ts';
+import { puzzleThemes, getPuzzle, getRandomPuzzle, DIFFICULTIES } from './puzzles.ts';
 import { generateBoard, cover, spansBoard, matchThemeWord, ROWS, COLS } from './board.ts';
 import type { StrandsBoard } from '../types/game';
 
@@ -117,6 +117,18 @@ test('a theme word counts on its own cells, or on any path that leaves the rest 
   // Both cases really happen, so the checks above are exercised
   assert.ok(accepted > 0, 'some word was accepted on another path');
   assert.ok(rejected > 0, 'some path was rejected');
+});
+
+test('every level has puzzles, and a random pick stays in its level and skips the current one', () => {
+  for (const level of DIFFICULTIES) {
+    const ids = puzzleThemes.flatMap((p, i) => (p.difficulty === level ? [i + 1] : []));
+    assert.ok(ids.length >= 20, level);
+    for (let i = 0; i < 20; i++) {
+      const pick = getRandomPuzzle(level, ids[0]).id;
+      assert.equal(puzzleThemes[pick - 1].difficulty, level);
+      assert.notEqual(pick, ids[0]);
+    }
+  }
 });
 
 test('getPuzzle returns the same untouched board every time', () => {

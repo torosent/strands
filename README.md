@@ -21,7 +21,7 @@ Boards are generated at random, so a puzzle can have more than one valid solutio
 
 ## Features
 
-- 200+ original puzzles with diverse themes
+- 200+ original puzzles with diverse themes, in easy, medium and hard
 - Responsive design works on desktop and mobile
 - Light and dark mode support
 - Progress tracking

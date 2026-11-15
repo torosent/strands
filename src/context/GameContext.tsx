@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { GameState, StrandsGame, Cell, BoardWord } from '@/types/game';
-import { getPuzzle, getRandomPuzzle } from '@/data/puzzles';
+import { getPuzzle, getRandomPuzzle, Difficulty, DIFFICULTIES } from '@/data/puzzles';
 import { loadDictionary } from '@/data/dictionary';
 import { matchThemeWord, sameCell } from '@/data/board';
 
@@ -11,6 +11,8 @@ const MIN_WORD_LENGTH = 4;
 
 type GameContextType = {
   puzzle: StrandsGame;
+  difficulty: Difficulty;
+  chooseDifficulty: (difficulty: Difficulty) => void;
   gameState: GameState;
   currentWord: string;
   foundCount: number;
@@ -47,12 +49,23 @@ const canExtend = (selected: Cell[], cell: Cell) => {
   );
 };
 
+// The player's last pick, kept across visits
+const savedDifficulty = (): Difficulty => {
+  try {
+    const saved = localStorage.getItem('difficulty');
+    const level = DIFFICULTIES.find(d => d === saved);
+    if (level) return level;
+  } catch {}
+  return 'medium';
+};
+
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 // Puzzles from getPuzzle are never mutated: every change below builds new objects,
 // so reloading a puzzle always gives a clean board.
 export const GameProvider = ({ children }: { children: React.ReactNode }) => {
-  const [puzzle, setPuzzle] = useState<StrandsGame>(getRandomPuzzle);
+  const [difficulty, setDifficulty] = useState<Difficulty>(savedDifficulty);
+  const [puzzle, setPuzzle] = useState<StrandsGame>(() => getRandomPuzzle(difficulty));
   const [gameState, setGameState] = useState<GameState>(newGameState);
   const currentWord = gameState.selectedCells.map(c => c.letter).join('');
   const foundCount = puzzle.board.words.filter(w => w.isFound).length;
@@ -145,9 +158,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     const themeWord = matchThemeWord(puzzle.board, selected);
     if (themeWord) return markFound(themeWord.word, themeWord.paths);
     if (word.length < MIN_WORD_LENGTH) return endTry('Too short');
-    if (gameState.nonThemeWords.includes(word) || puzzle.board.words.some(w => w.isFound && w.word === word)) {
-      return endTry('Already found');
-    }
+    // A theme word traced on letters that would leave the board unsolvable (see matchThemeWord)
+    const listed = puzzle.board.words.find(w => w.word === word);
+    if (listed) return endTry(listed.isFound ? 'Already found' : 'Right word, wrong letters');
+    if (gameState.nonThemeWords.includes(word)) return endTry(`Already tried ${word}: not a theme word`);
 
     // The list may still be loading. If the player moved on meanwhile (new letters,
     // reset, new puzzle), the selection array changed and the late answer is dropped.
@@ -156,7 +170,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     loadDictionary().then(
       dictionary => answer(prev => {
         if (!dictionary.has(word)) return { ...prev, selectedCells: [], message: 'Not in word list' };
-        if (prev.nonThemeWords.includes(word)) return { ...prev, selectedCells: [], message: 'Already found' };
+        if (prev.nonThemeWords.includes(word)) return { ...prev, selectedCells: [], message: `Already tried ${word}: not a theme word` };
         return { ...prev, selectedCells: [], message: `${word}: not a theme word`, nonThemeWords: [...prev.nonThemeWords, word] };
       }),
       () => answer(prev => ({ ...prev, selectedCells: [], message: 'Word list unavailable, try again' }))
@@ -175,9 +189,18 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const loadPuzzle = () => {
-    setPuzzle(getRandomPuzzle());
+  const startPuzzle = (level: Difficulty) => {
+    setPuzzle(getRandomPuzzle(level, puzzle.id));
     setGameState(newGameState());
+  };
+  const loadPuzzle = () => startPuzzle(difficulty);
+
+  // A new level starts a new puzzle of that level
+  const chooseDifficulty = (level: Difficulty) => {
+    if (level === difficulty) return;
+    setDifficulty(level);
+    try { localStorage.setItem('difficulty', level); } catch {}
+    startPuzzle(level);
   };
 
   // Same puzzle, back to its untouched original
@@ -207,6 +230,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <GameContext.Provider value={{
       puzzle,
+      difficulty,
+      chooseDifficulty,
       gameState,
       currentWord,
       foundCount,

@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useGame } from '@/context/GameContext';
 import { useTheme } from '@/context/ThemeContext';
+import { DIFFICULTIES } from '@/data/puzzles';
 
 export default function GameHeader() {
-  const { puzzle, foundCount } = useGame();
+  const { puzzle, foundCount, difficulty, chooseDifficulty } = useGame();
   const { theme, toggleTheme } = useTheme();
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -108,6 +109,23 @@ export default function GameHeader() {
         <p className="text-base font-bold text-gray-900 dark:text-gray-300">
           {`Puzzle #${puzzle.id}`}
         </p>
+      </div>
+
+      <div role="group" aria-label="Difficulty" className="inline-flex mb-4 rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden">
+        {DIFFICULTIES.map(level => (
+          <button
+            key={level}
+            onClick={() => chooseDifficulty(level)}
+            aria-pressed={difficulty === level}
+            className={`px-4 py-1.5 text-sm font-medium capitalize transition-colors ${
+              difficulty === level
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            {level}
+          </button>
+        ))}
       </div>
       
       <div className="mb-4">
